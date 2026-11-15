@@ -1,0 +1,48 @@
+name: Package Addon on Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: "node24"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Addon ZIP
+        run: |
+          ADDON_NAME="OneLock"
+          ZIP_NAME="${ADDON_NAME}-latest.zip"
+          mkdir -p staging
+          # Copy modules into staging
+          cp -r OneLock_Timers staging/
+          cp -r OneLock_Shards staging/
+          cp -r OneLock_Procs staging/
+          cp README.md CHANGELOG.md CONTEXT.md staging/OneLock_Timers/ || true
+          cd staging
+          zip -r "../${ZIP_NAME}" .
+          cd ..
+
+      - name: Publish Latest Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ADDON_NAME="OneLock"
+          ZIP_NAME="${ADDON_NAME}-latest.zip"
+          
+          # Delete existing tag/release if it exists so it updates in place
+          gh release delete latest --yes || true
+          git tag -d latest || true
+          git push origin :latest || true
+          
+          # Create fresh release and attach the zip
+          gh release create latest "${ZIP_NAME}" \
+            --title "${ADDON_NAME} (Latest Build)" \
+            --notes "Automated build from commit ${{ github.sha }}."

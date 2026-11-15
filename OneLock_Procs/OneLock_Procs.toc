@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: OneLock: Procs
+## Notes: High-visibility proc alerts (Shadow Trance, Backlash) and CC immunity alerts for Warlocks on WoW Forever.
+## Author: Nuros
+## Version: 0.1.0
+## SavedVariables: OneLockProcsDB
+## OptionalDeps: OnePanel, OnePanelUtils, MovableFrames
+
+Core.lua
+Alerts.lua

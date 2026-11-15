@@ -1,0 +1,11 @@
+## Interface: 16001
+## Title: OneLock: Timers
+## Notes: Multi-target raid DoT and CC timer engine for Warlocks on WoW Forever.
+## Author: Nuros
+## Version: 0.1.0
+## SavedVariables: OneLockTimersDB
+## OptionalDeps: OnePanel, OnePanelUtils, MovableFrames
+
+Core.lua
+Tracker.lua
+Display.lua
