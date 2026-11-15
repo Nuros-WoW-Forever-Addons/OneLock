@@ -23,6 +23,12 @@ function ns:Print(msg)
     print(prefix .. tostring(msg))
 end
 
+function ns:Log(level, category, message, extraData)
+    if _G.OneSwatter and _G.OneSwatter.Log then
+        _G.OneSwatter:Log(addonName, level, category, message, extraData)
+    end
+end
+
 local function InitDB()
     if not OneLockProcsDB then
         OneLockProcsDB = {}
@@ -54,6 +60,7 @@ local function HandleSlashCommand(msg)
         if ns.Alerts and ns.Alerts.TriggerTestAlert then
             ns.Alerts:TriggerTestAlert()
             ns:Print("Triggered test proc alert.")
+            ns:Log("DEBUG", "Commands", "Triggered test alert.")
         end
     elseif cmd == "sound" then
         ns.db.playAudio = not ns.db.playAudio
@@ -62,15 +69,19 @@ local function HandleSlashCommand(msg)
         else
             ns:Print("Proc audio alerts |cffff4444DISABLED|r.")
         end
+        ns:Log("INFO", "Settings", "Audio alerts toggled: " .. tostring(ns.db.playAudio))
     elseif cmd == "nightfall" then
         ns.db.enableNightfall = not ns.db.enableNightfall
         ns:Print("Nightfall alerts: " .. (ns.db.enableNightfall and "|cff44ff44ON|r" or "|cffff4444OFF|r"))
+        ns:Log("INFO", "Settings", "Nightfall alerts toggled: " .. tostring(ns.db.enableNightfall))
     elseif cmd == "backlash" then
         ns.db.enableBacklash = not ns.db.enableBacklash
         ns:Print("Backlash alerts: " .. (ns.db.enableBacklash and "|cff44ff44ON|r" or "|cffff4444OFF|r"))
+        ns:Log("INFO", "Settings", "Backlash alerts toggled: " .. tostring(ns.db.enableBacklash))
     elseif cmd == "immunity" then
         ns.db.enableImmunityAlert = not ns.db.enableImmunityAlert
         ns:Print("Immunity alerts: " .. (ns.db.enableImmunityAlert and "|cff44ff44ON|r" or "|cffff4444OFF|r"))
+        ns:Log("INFO", "Settings", "Immunity alerts toggled: " .. tostring(ns.db.enableImmunityAlert))
     else
         ns:Print("OneLock Procs commands:")
         print("  |cffffd100/olprocs test|r — Trigger a test proc alert banner")
@@ -91,6 +102,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if ns.Alerts and ns.Alerts.Initialize then
             ns.Alerts:Initialize()
         end
+        ns:Log("INFO", "Core", "OneLock_Procs v" .. ns.version .. " initialized.")
     elseif event == "PLAYER_LOGIN" then
         ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/olprocs|r for options.")
     end

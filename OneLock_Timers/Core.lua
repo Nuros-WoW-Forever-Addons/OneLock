@@ -33,11 +33,17 @@ local defaultDB = {
 }
 
 -------------------------------------------------------------------------------
--- Print & Logging
+-- Print & OneSwatter Logging Integration
 -------------------------------------------------------------------------------
 function ns:Print(msg)
     local prefix = "|cff9966ff[OneLock:Timers]|r "
     print(prefix .. tostring(msg))
+end
+
+function ns:Log(level, category, message, extraData)
+    if _G.OneSwatter and _G.OneSwatter.Log then
+        _G.OneSwatter:Log(addonName, level, category, message, extraData)
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -66,40 +72,6 @@ local function InitDB()
 end
 
 -------------------------------------------------------------------------------
--- MovableFrames & OnePanel Sibling Integration
--------------------------------------------------------------------------------
-local function RegisterWithSiblingAddons()
-    -- Register Anchor with MovableFrames custom frames if installed
-    if _G.MovableFramesDB and _G.MovableFramesDB.customFrames then
-        _G.MovableFramesDB.customFrames["OneLockTimersAnchor"] = true
-    end
-
-    -- Register optional plugin tab in OnePanel if present
-    if _G.OnePanel and type(_G.OnePanel.RegisterPlugin) == "function" then
-        _G.OnePanel:RegisterPlugin({
-            id = "OneLock",
-            title = "OneLock",
-            order = 60,
-            tooltipDesc = "OneLock Suite Configuration and Timer Status",
-            CreateView = function(parent)
-                local view = CreateFrame("Frame", "OnePanel_OneLockView", parent)
-                view:SetAllPoints(parent)
-
-                local title = view:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-                title:SetPoint("TOPLEFT", 16, -16)
-                title:SetText("|cff9966ffOneLock Suite (WoW: Forever)|r")
-
-                local status = view:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                status:SetPoint("TOPLEFT", 16, -42)
-                status:SetText("Multi-target DoT & CC tracking active.\nUse |cffffd100/ol|r to unlock or configure bars.")
-
-                return view
-            end,
-        })
-    end
-end
-
--------------------------------------------------------------------------------
 -- Slash Command Handler (/onelock, /ol)
 -------------------------------------------------------------------------------
 local function HandleSlashCommand(msg)
@@ -113,12 +85,14 @@ local function HandleSlashCommand(msg)
             ns.Display:UpdateAnchorState()
         end
         ns:Print("Anchor |cff44ff44UNLOCKED|r. Drag the anchor frame to reposition, then type |cffffd100/ol lock|r.")
+        ns:Log("INFO", "Commands", "Anchor unlocked for repositioning.")
     elseif cmd == "lock" then
         ns.db.locked = true
         if ns.Display and ns.Display.UpdateAnchorState then
             ns.Display:UpdateAnchorState()
         end
         ns:Print("Anchor |cffff4444LOCKED|r.")
+        ns:Log("INFO", "Commands", "Anchor locked.")
     elseif cmd == "reset" then
         ns.db.position.point = "CENTER"
         ns.db.position.relativePoint = "CENTER"
@@ -128,6 +102,7 @@ local function HandleSlashCommand(msg)
             ns.Display:ResetAnchorPosition()
         end
         ns:Print("Anchor position reset to center.")
+        ns:Log("INFO", "Commands", "Anchor position reset to default.")
     elseif cmd == "test" then
         if ns.Display and ns.Display.ToggleTestMode then
             local active = ns.Display:ToggleTestMode()
@@ -136,6 +111,7 @@ local function HandleSlashCommand(msg)
             else
                 ns:Print("Simulated test bars |cffff4444DISABLED|r.")
             end
+            ns:Log("DEBUG", "Commands", "Test mode toggled: " .. tostring(active))
         end
     elseif cmd == "scale" then
         local num = tonumber(arg)
@@ -145,6 +121,7 @@ local function HandleSlashCommand(msg)
                 ns.Display:ApplyDisplaySettings()
             end
             ns:Print(string.format("Bar scale set to %.2f.", num))
+            ns:Log("INFO", "Settings", "Scale updated to " .. tostring(num))
         else
             ns:Print("Usage: |cffffd100/ol scale <0.5 - 2.0>|r")
         end
@@ -156,6 +133,7 @@ local function HandleSlashCommand(msg)
                 ns.Display:ApplyDisplaySettings()
             end
             ns:Print(string.format("Bar width set to %d px.", num))
+            ns:Log("INFO", "Settings", "Width updated to " .. tostring(num))
         else
             ns:Print("Usage: |cffffd100/ol width <100 - 300>|r")
         end
@@ -167,6 +145,7 @@ local function HandleSlashCommand(msg)
                 ns.Display:ApplyDisplaySettings()
             end
             ns:Print(string.format("Max visible targets set to %d.", num))
+            ns:Log("INFO", "Settings", "Max visible targets updated to " .. tostring(num))
         else
             ns:Print("Usage: |cffffd100/ol max <1 - 10>|r")
         end
@@ -198,10 +177,10 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if ns.Tracker and ns.Tracker.Initialize then
             ns.Tracker:Initialize()
         end
-        RegisterWithSiblingAddons()
+        ns:Log("INFO", "Core", "OneLock_Timers v" .. ns.version .. " loaded successfully.")
     elseif event == "PLAYER_LOGIN" then
-        RegisterWithSiblingAddons()
         ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/ol|r for options.")
+        ns:Log("INFO", "Core", "PLAYER_LOGIN initialized.")
     end
 end)
 

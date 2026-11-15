@@ -4,7 +4,7 @@
 ## Author: Nuros
 ## Version: 0.1.0
 ## SavedVariables: OneLockProcsDB
-## OptionalDeps: OnePanel, OnePanelUtils, MovableFrames
+## OptionalDeps: OneSwatter
 
 Core.lua
 Alerts.lua

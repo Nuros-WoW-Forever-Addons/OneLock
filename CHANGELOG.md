@@ -7,34 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned
-- Full `OneLock_Shards` inventory deletion loop and persistent 30-minute Soulstone HUD bar.
-- Full `OneLock_Procs` screen alerts and sound triggers for Nightfall, Backlash, and target CC immunity.
-- Integrated graphical options panel inside `OnePanel`.
+---
+
+## [0.1.1] - 2026-11-15
+
+### Fixed
+- **Engine API Alignment (WoW Forever Interface 16001)**:
+  - Fixed fatal `GetSpellInfo` nil call in `OneLock_Timers/Tracker.lua` by implementing modern `C_Spell.GetSpellInfo` (table payload) and `C_Spell.GetSpellName`.
+  - Fixed fatal `GetContainerNumSlots` nil call in `OneLock_Shards/ShardManager.lua` by implementing modern `C_Container.GetContainerNumSlots` and `C_Container.GetContainerItemID`.
+  - Fixed fatal `UnitBuff` nil call in `OneLock_Procs/Alerts.lua` by implementing modern `C_UnitAuras.GetPlayerAuraBySpellID`.
+  - Fixed fatal engine error `Forbidden function call: AddOn attempted to call 'RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")'`:
+    - Removed `COMBAT_LOG_EVENT_UNFILTERED` across all modules to adhere to WoW Forever's combat log disarmament.
+    - Transitioned multi-target aura tracking to modern `C_UnitAuras` and nameplate event routing (`UNIT_AURA`, `NAME_PLATE_UNIT_ADDED`/`REMOVED`, `PLAYER_TARGET_CHANGED`, `UNIT_SPELLCAST_SUCCEEDED`).
+    - Transitioned CC immunity alerts to `UI_ERROR_MESSAGE` ("Target is immune").
+    - Transitioned Soulstone cast detection to `UNIT_SPELLCAST_SUCCEEDED`.
+
+### Changed
+- **Decoupled OnePanel & MovableFrames**:
+  - Removed all dependencies and optional dependencies on `OnePanel`, `OnePanelUtils`, and `MovableFrames`.
+  - Maintained fully self-contained movable anchor system in `OneLock_Timers` (`/ol unlock` / `/ol lock`).
+- **Integrated OneSwatter**:
+  - Added optional dependency on `OneSwatter` in all `.toc` files.
+  - Implemented `ns:Log(level, category, message, extraData)` routing directly to `OneSwatter:Log` for live diagnostics and debug capturing.
 
 ---
 
 ## [0.1.0] - 2026-11-15
 
 ### Added
-- **Suite Scaffolding**: Initialized modular multi-addon layout (`OneLock_Timers`, `OneLock_Shards`, `OneLock_Procs`) targeting WoW Forever Beta (`v1.60.1` / `Interface: 16001`).
-- **OneLock_Timers**:
-  - Implemented multi-target DoT and CC tracker driven by `COMBAT_LOG_EVENT_UNFILTERED` filtered to player source GUID.
-  - Added support for Corruption, Unstable Affliction, Curse/Bane of Agony, Curse of Doom, Curse of the Elements, Curse of Recklessness, Curse of Tongues, Curse of Weakness, Siphon Life, Immolate, Seed of Corruption, Banish, and Fear.
-  - Implemented client-authoritative `UnitDebuff` duration reconciliation on target, focus, and mouseover units.
-  - Added instant purging on `UNIT_DIED` and `UNIT_DESTROYED` with background OnUpdate timer garbage collection.
-  - Built non-protected reusable frame pool (`StatusBar` and target header frames) grouped by `destGUID` under `OneLockTimersAnchor`.
-  - Added target name header highlighting for currently selected `target`.
-  - Added visual Pandemic refresh color shift when remaining duration is under 3.0 seconds.
-  - Added slash command suite (`/onelock`, `/ol`) with `/ol test`, `/ol unlock`, `/ol lock`, `/ol reset`, and scaling/width options.
-- **OneLock_Shards**:
-  - Initialized module manifest and Core scaffold.
-  - Added `BAG_UPDATE` Soul Shard counting stub (itemID 6265) and out-of-combat excess deletion framework.
-  - Added 30-minute Soulstone tracking frame stub.
-- **OneLock_Procs**:
-  - Initialized module manifest and Core scaffold.
-  - Added `UNIT_AURA` proc detection stubs for Shadow Trance (Nightfall) and Backlash.
-  - Added combat log CC target immunity detection stub.
-- **Workspace Tooling**:
-  - Integrated `OneLock` into `sync-live.sh` and `rollback-live.sh` with automatic multi-module discovery and syncing.
-  - Configured `.github/workflows/package.yml` release packaging workflow.
+- Initial modular scaffolding (`OneLock_Timers`, `OneLock_Shards`, `OneLock_Procs`).
+- Initial multi-target timer engine and Pandemic color shift logic.

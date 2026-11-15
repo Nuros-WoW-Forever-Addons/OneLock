@@ -7,8 +7,8 @@
 ## 🎯 Overview & Scope
 
 - **Addon Suite**: OneLock (Modular Warlock Suite)
-- **Current Version**: 0.1.0
-- **Suite**: Part of the **OneSuite** family (`OnePanel`, `OnePanelUtils`, `MovableFrames`, `OneStorage`)
+- **Current Version**: 0.1.1
+- **Suite**: Independent Warlock suite in the `Nuros-WoW-Forever-Addons` ecosystem
 - **GitHub Repository**:
   - Exists: FALSE *(Will be created at `https://github.com/Nuros-WoW-Forever-Addons/OneLock`)*
 - **Branching Policy**: All new features must be developed on a branch != `main` (active: `dev`)
@@ -17,9 +17,10 @@
 - **Release Package**: `.github/workflows/package.yml` generates `OneLock-latest.zip` on push to `main`
 - **Target WoW Runtimes**: WoW Forever Beta (v1.60.1 / Interface 16001)
 - **Primary Goal**: Provide a streamlined, high-signal raid utility suite for Warlocks without Necrosis bloat (no spherical 3D HUDs, pop-out demon menus, or RP chat spam), featuring:
-  1. **Multi-Target DoT & CC Engine (`OneLock_Timers`)**: Real-time combat-log-driven aura duration tracking across multiple raid targets with 3.0s Pandemic refresh indication.
+  1. **Multi-Target DoT & CC Engine (`OneLock_Timers`)**: Real-time aura duration tracking across multiple raid targets with 3.0s Pandemic refresh indication.
   2. **Soul Shard & Soulstone Manager (`OneLock_Shards`)**: Inventory soul shard threshold management, out-of-combat excess cleanup, and persistent 30-minute Soulstone target tracker.
   3. **Proc & Immunity Alerts (`OneLock_Procs`)**: High-visibility reactive alerts for Shadow Trance (Nightfall) and Backlash procs, plus target CC immunity notifications (Fear/Banish).
+- **Diagnostics & Debug Integration**: Seamless optional integration with `OneSwatter` (`OneSwatter:Log`). No dependencies on `OnePanel` or `MovableFrames`.
 
 ---
 
@@ -48,58 +49,42 @@ OneLock/
 ```
 
 ### Module Breakdown
-- **`OneLock_Timers`** (Priority 1):
-  - `OneLock_Timers.toc`: Manifest, SavedVariables `OneLockTimersDB`, optional dependencies on `OnePanel`, `OnePanelUtils`, `MovableFrames`.
-  - `Core.lua`: Namespace initialization (`OneLock_Timers`), SavedVariables schema defaults, slash command handler (`/onelock`, `/ol`), MovableFrames registration, and OnePanel integration.
-  - `Tracker.lua`: Multi-target combat log event consumer (`COMBAT_LOG_EVENT_UNFILTERED`) filtered to player GUID. Tracks DoTs and CCs by `destGUID` and `destName`. Reconciles remaining duration against `UnitDebuff` whenever target/focus/mouseover matches `destGUID`. Purges on `UNIT_DIED`/`UNIT_DESTROYED` and provides an OnUpdate garbage collector.
+- **`OneLock_Timers`**:
+  - `OneLock_Timers.toc`: Manifest, SavedVariables `OneLockTimersDB`, optional dependency on `OneSwatter`. Zero dependency on `OnePanel` or `MovableFrames`.
+  - `Core.lua`: Namespace initialization (`OneLock_Timers`), SavedVariables schema defaults, slash command handler (`/onelock`, `/ol`), independent anchor drag management, and `OneSwatter:Log` diagnostic hooks.
+  - `Tracker.lua`: Multi-target aura tracking engine using modern `C_UnitAuras` and nameplate routing (`NAME_PLATE_UNIT_ADDED`/`REMOVED`, `UNIT_AURA`, `PLAYER_TARGET_CHANGED`, `PLAYER_FOCUS_CHANGED`, `UPDATE_MOUSEOVER_UNIT`, `UNIT_SPELLCAST_SUCCEEDED`).
   - `Display.lua`: Non-protected frame pool manager (`StatusBar` + Target Headers). Renders vertical groups anchored to `OneLockTimersAnchor`. Highlights current target header, updates countdown text, and shifts bar color to gold/amber when remaining duration is under the 3.0s Pandemic threshold. Includes simulated test mode (`/ol test`).
-- **`OneLock_Shards`** (Priority 2):
-  - `OneLock_Shards.toc`: Manifest, SavedVariables `OneLockShardsDB`.
+- **`OneLock_Shards`**:
+  - `OneLock_Shards.toc`: Manifest, SavedVariables `OneLockShardsDB`, optional dependency on `OneSwatter`.
   - `Core.lua`: Namespace initialization (`OneLock_Shards`), DB setup, slash command handler (`/olshards`).
-  - `ShardManager.lua`: Tracks Soul Shard (itemID 6265) counts on `BAG_UPDATE`. Provides safe out-of-combat deletion routines for shards exceeding a configurable cap (default 24).
-  - `SoulstoneTracker.lua`: Listens for Soulstone Resurrection cast/aura applications, displaying a persistent 30-minute expiration bar and tracking target alive/dead status.
-- **`OneLock_Procs`** (Priority 3):
-  - `OneLock_Procs.toc`: Manifest, SavedVariables `OneLockProcsDB`.
+  - `ShardManager.lua`: Tracks Soul Shard (itemID 6265) counts on `BAG_UPDATE` using modern `C_Container` APIs (`C_Container.GetContainerNumSlots`, `C_Container.GetContainerItemID`). Provides safe out-of-combat deletion routines for shards exceeding a configurable cap (default 24).
+  - `SoulstoneTracker.lua`: Listens for `UNIT_SPELLCAST_SUCCEEDED` on Soulstone spells, displaying a persistent 30-minute expiration bar and tracking target alive/dead status.
+- **`OneLock_Procs`**:
+  - `OneLock_Procs.toc`: Manifest, SavedVariables `OneLockProcsDB`, optional dependency on `OneSwatter`.
   - `Core.lua`: Namespace initialization (`OneLock_Procs`), DB setup, slash command handler (`/olprocs`).
-  - `Alerts.lua`: Event hooks for `UNIT_AURA` (player) detecting Shadow Trance (Nightfall) and Backlash procs, plus `SPELL_MISSED` (`IMMUNE`) combat log parsing for Fear and Banish.
+  - `Alerts.lua`: Event hooks for `UNIT_AURA` (`player`) detecting Shadow Trance (Nightfall) and Backlash procs via `C_UnitAuras.GetPlayerAuraBySpellID`, plus `UI_ERROR_MESSAGE` parsing for Fear and Banish target immunities.
 
 ---
 
-## ⚡ Technical Architecture & Interface 16001 API Rules
+## ⚡ Technical Architecture & Verified Interface 16001 API Rules
 
-### Target Client: WoW Forever Beta (`v1.60.1` / `Interface: 16001`)
-- **Exclusive API Set**: All code targets the WoW Forever v1.60.1 client directly.
-- **No Retail / TWW APIs**: Do NOT use `C_Container.*`, `C_Spell.*`, `C_UnitAuras.*`, or modernized retail payload unpackers.
-- **Combat Log Parsing (`COMBAT_LOG_EVENT_UNFILTERED`)**:
-  - Event signature payload:
-    ```lua
-    local timestamp, subevent, hideCaster,
-          sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
-          destGUID, destName, destFlags, destRaidFlags,
-          spellId, spellName, spellSchool,
-          auraType, amount = CombatLogGetCurrentEventInfo()
-    ```
-  - Subevents tracked:
-    - `SPELL_AURA_APPLIED`: Create or reset tracked timer for player-cast spells.
-    - `SPELL_AURA_REFRESH`: Reset timer to full duration.
-    - `SPELL_AURA_REMOVED`, `SPELL_AURA_BROKEN`, `SPELL_AURA_BROKEN_SPELL`: Remove specific timer for `(destGUID, spellName)`.
-    - `UNIT_DIED`, `UNIT_DESTROYED`: Purge all active timers associated with `destGUID`.
-    - `SPELL_MISSED` (with missType == `"IMMUNE"`): Notify immunity alert in `OneLock_Procs`.
-- **Authoritative UnitDebuff Reconciliation**:
-  - Combat log events provide aura start times, but not exact durations modified by talents, haste, or combo ranks.
-  - When the player targets, focuses, or mouses over a unit whose GUID matches an active `destGUID`, `Tracker.lua` scans `UnitDebuff(unit, i)`:
-    ```lua
-    local name, icon, count, debuffType, duration, expirationTime, unitCaster = UnitDebuff(unit, i)
-    ```
-  - If `unitCaster == "player"` and `name == spellName`, the tracked entry's `duration` and `expirationTime` are reconciled with client-authoritative values.
+### Target Client: WoW Forever Beta (`v1.60.1` / `Interface: 16001`, codename *Camelot*)
+- **Modern Mainline UI Architecture**: Forever shares Mainline's modern UI architecture with Midnight addon disarmament active.
+- **Modern C_ APIs (Absent Legacy Globals)**:
+  - `GetSpellInfo` is **absent/nil**. Always use `C_Spell.GetSpellInfo` (returns table) or `C_Spell.GetSpellName`.
+  - `GetContainerNumSlots` and `GetContainerItemID` are **absent/nil**. Always use `C_Container.GetContainerNumSlots` and `C_Container.GetContainerItemID`.
+  - `UnitBuff` and `UnitDebuff` are **absent/nil**. Always use `C_UnitAuras.GetPlayerAuraBySpellID`, `C_UnitAuras.GetDebuffDataByIndex`, or `C_UnitAuras.GetAuraDataByIndex`.
+- **Combat Disarmament**:
+  - `COMBAT_LOG_EVENT_UNFILTERED` is disarmed/forbidden by the engine; attempting to call `RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")` throws a fatal engine error.
+  - Multi-target tracking is routed through supported unit tokens (`"target"`, `"focus"`, `"mouseover"`, `"nameplate1"`..`"nameplate40"`, `"boss1"`..`"boss5"`) via `UNIT_AURA` and `NAME_PLATE_UNIT_ADDED`/`REMOVED`.
 
 ---
 
 ## 🛡️ Combat Lockdown Restrictions & UI Safety
 
 - **No SecureActionButtonTemplate Mutability**: Never dynamically create, resize, re-anchor, or mutate secure protected action frames while `InCombatLockdown()` is true.
-- **Lightweight Non-Protected Frame Pool**: All timer bars and headers in `OneLock_Timers` are non-protected `Frame` and `StatusBar` objects created via an internal frame pool. They can update, re-anchor, show, and hide during raid combat with zero taint risk.
-- **Out-of-Combat Action Safety**: Destructive inventory operations (e.g. `ShardManager.lua` deleting excess soul shards via `PickupContainerItem` and `DeleteCursorItem`) are strictly gated by `not InCombatLockdown()` and queued until `PLAYER_REGEN_ENABLED` if triggered during combat.
+- **Lightweight Non-Protected Frame Pool**: All timer bars and headers in `OneLock_Timers` are non-protected `Frame` and `StatusBar` objects created via an internal frame pool. They can update, re-anchor, show, and hide during active raid combat with zero taint risk.
+- **Out-of-Combat Action Safety**: Destructive inventory operations (e.g. `ShardManager.lua` deleting excess soul shards via `C_Container.PickupContainerItem` and `DeleteCursorItem`) are strictly gated by `not InCombatLockdown()` and queued until `PLAYER_REGEN_ENABLED` if triggered during combat.
 
 ---
 
@@ -124,7 +109,7 @@ OneLockTimersDB = {
     position = {                       -- Screen position of master anchor
         point = "CENTER",
         relativePoint = "CENTER",
-        x = 150,
+        x = 160,
         y = 0,
     },
 }
@@ -160,20 +145,11 @@ OneLockProcsDB = {
 
 ---
 
-## 🔌 Integration Hooks & Sibling Addon Ecosystem
+## 🔌 Diagnostics Integration
 
-### `MovableFrames` Integration
-- `OneLockTimersAnchor` automatically registers with `MovableFrames` if present:
-  ```lua
-  if MovableFramesDB and MovableFramesDB.customFrames then
-      MovableFramesDB.customFrames["OneLockTimersAnchor"] = true
-  end
-  ```
-- Supports independent positioning and scaling through MovableFrames HUD edit mode or native `/ol unlock` drag handles.
-
-### `OnePanel` & `OnePanelUtils` Integration
-- Integrates optional tab in `OnePanel` via `OnePanel:RegisterPlugin` when `OnePanel` is loaded.
-- Employs `OnePanelUtils.Logger` if available for structured debugging.
+### `OneSwatter` Integration
+- All modules integrate directly with `_G.OneSwatter:Log(addonName, level, category, message, extraData)`.
+- If `OneSwatter` is installed and running, OneLock automatically registers itself and logs informational, error, and debug messages directly into OneSwatter's live viewer and SavedVariables (`OneSwatterDB.debugLogs`).
 
 ---
 
@@ -183,43 +159,36 @@ When picking up development on this addon:
 1. **Orientation**: Read `CONTEXT.md` (this file) to verify current state, known issues, and the active backlog item for this spin.
 2. **Implementation**: Execute changes adhering strictly to the WoW Forever v1.60.1 / Interface 16001 single-client rules.
 3. **Verification**: Verify in-game syntax and test using slash commands (`/ol`, `/ol test`, `/ol lock`, `/ol reset`).
-4. **Handoff Update**:
-   - Move completed tasks from **Upcoming Backlog** to **Recent Completed Work**.
-   - If user-facing features or commands changed, update `README.md` and append a new section in `CHANGELOG.md`.
-   - Document newly discovered backlog items or edge cases in **Upcoming Backlog**.
 
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.1 (Engine API Alignment & Zero-Dependency Decoupling)
+- **Decoupled OnePanel & MovableFrames**: Removed all references, hooks, and `.toc` optional dependencies on `OnePanel`, `OnePanelUtils`, and `MovableFrames`.
+- **Integrated OneSwatter**: Added direct diagnostic logging across all modules to `OneSwatter:Log`.
+- **Resolved Fatal 16001 Runtime Errors**:
+  - Fixed `GetSpellInfo` nil call in `Tracker.lua` by implementing modern `C_Spell.GetSpellInfo` (table return) and `C_Spell.GetSpellName`.
+  - Fixed forbidden `COMBAT_LOG_EVENT_UNFILTERED` registration error across all modules; transitioned aura tracking to modern `C_UnitAuras` and nameplate events (`NAME_PLATE_UNIT_ADDED`/`REMOVED`, `UNIT_AURA`).
+  - Fixed `GetContainerNumSlots` nil call in `ShardManager.lua` by implementing modern `C_Container.GetContainerNumSlots` and `C_Container.GetContainerItemID`.
+  - Fixed `UnitBuff` nil call in `Alerts.lua` by using `C_UnitAuras.GetPlayerAuraBySpellID`.
+- Tested and confirmed clean Lua syntax compilation via `luac -p`.
+
 ### Spin 0.1.0 (Initial Scaffold & Multi-Target DoT Engine)
 - Initialized modular repository structure (`OneLock_Timers`, `OneLock_Shards`, `OneLock_Procs`).
-- Built complete `OneLock_Timers` multi-target DoT and CC tracking engine:
-  - Combat log event consumer filtering `sourceGUID == UnitGUID("player")`.
-  - Comprehensive spell table supporting Corruption, Unstable Affliction, Curse/Bane of Agony, Curse of Doom, Curse of the Elements, Curse of Recklessness, Curse of Tongues, Curse of Weakness, Siphon Life, Immolate, Seed of Corruption, Banish, and Fear.
-  - Client-authoritative `UnitDebuff` duration reconciliation on target, focus, and mouseover change.
-  - Automatic purging on `UNIT_DIED` and `UNIT_DESTROYED` with OnUpdate garbage collection.
-  - Frame pool architecture (`StatusBar` and target header frames) grouped vertically by `destGUID`.
-  - Target highlighting, dynamic countdowns, and Pandemic (< 3.0s) color shifting.
-  - Movable master anchor `OneLockTimersAnchor` with `/ol lock`, `/ol unlock`, `/ol reset`, and simulated `/ol test` mode.
-- Scaffolded loadable `.toc` and `Core.lua` modules for `OneLock_Shards` and `OneLock_Procs`.
-- Integrated `sync-live.sh` and `rollback-live.sh` suite syncing.
+- Built complete `OneLock_Timers` multi-target DoT and CC tracking engine with 3.0s Pandemic color shift.
 
 ---
 
 ## 📋 Living Roadmap & Upcoming Backlog (Next Spins)
 
 ### Priority 1: High Priority (Immediate Next Spin)
-- [ ] **OneLock_Shards Full Implementation**: Implement active `BAG_UPDATE` shard counting badge and out-of-combat `DeleteCursorItem()` garbage collection loop.
-- [ ] **Soulstone Expiration Tracker**: Implement the 30-minute persistent soulstone HUD bar with unit alive/dead detection.
+- [ ] **OneLock_Shards In-Game Verification**: Test bag updates on Soul Shard gains and verify out-of-combat deletion cap.
+- [ ] **Soulstone Expiration Tracker Testing**: Verify persistent 30-minute HUD bar upon casting Soulstone.
 
 ### Priority 2: Medium Priority (Enhancements)
-- [ ] **OneLock_Procs Full Implementation**: Implement screen-center proc banners for Nightfall (`Shadow Trance`) and Backlash with custom textures and sound effects.
-- [ ] **Target CC Immunity Banner**: Add combat log `SPELL_MISSED` immunity toast when a target resists/immunes Banish or Fear.
-
-### Priority 3: Low Priority / Quality of Life
-- [ ] **OnePanel Options Canvas**: Create an interactive graphical options panel inside OnePanel for configuring bar colors, textures, and spell blacklists.
-- [ ] **Sound Alerts for Pandemic Window**: Optional audio click/tick when a DoT enters the 3.0s Pandemic refresh window.
+- [ ] **Proc Banner Polish**: Refine Nightfall / Backlash banner visual animations and sound triggers.
+- [ ] **Configurable Anchor Drag Bounds**: Add screen boundary clamping to prevent dragging timer bars off-screen.
 
 ---
 
@@ -231,3 +200,5 @@ When picking up development on this addon:
 - **Reset Anchor Position**: `/ol reset` — repositions anchor to screen center.
 - **Adjust Bar Scale**: `/ol scale 1.2` — sets scale to 120%.
 - **Adjust Bar Width**: `/ol width 180` — sets width to 180px.
+- **Check Soul Shards**: `/olshards count`
+- **Test Proc Banner**: `/olprocs test`

@@ -27,6 +27,12 @@ function ns:Print(msg)
     print(prefix .. tostring(msg))
 end
 
+function ns:Log(level, category, message, extraData)
+    if _G.OneSwatter and _G.OneSwatter.Log then
+        _G.OneSwatter:Log(addonName, level, category, message, extraData)
+    end
+end
+
 local function InitDB()
     if not OneLockShardsDB then
         OneLockShardsDB = {}
@@ -58,12 +64,14 @@ local function HandleSlashCommand(msg)
         if ns.ShardManager and ns.ShardManager.GetShardCount then
             local count = ns.ShardManager:GetShardCount()
             ns:Print(string.format("Soul Shards in inventory: |cffffd100%d|r (Cap: %d)", count, ns.db.maxShards))
+            ns:Log("INFO", "Commands", "Shard count query: " .. tostring(count))
         end
     elseif cmd == "cap" then
         local num = tonumber(arg)
         if num and num >= 1 and num <= 32 then
             ns.db.maxShards = num
             ns:Print(string.format("Soul Shard maximum cap set to |cffffd100%d|r.", num))
+            ns:Log("INFO", "Settings", "Soul Shard cap set to " .. tostring(num))
         else
             ns:Print("Usage: |cffffd100/olshards cap <1 - 32>|r")
         end
@@ -74,6 +82,7 @@ local function HandleSlashCommand(msg)
         else
             ns:Print("Auto-deletion of excess soul shards |cffff4444DISABLED|r.")
         end
+        ns:Log("INFO", "Settings", "Auto-delete toggled: " .. tostring(ns.db.autoDeleteExcess))
     elseif cmd == "cleanup" then
         if ns.ShardManager and ns.ShardManager.CleanupExcessShards then
             ns.ShardManager:CleanupExcessShards()
@@ -100,6 +109,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if ns.SoulstoneTracker and ns.SoulstoneTracker.Initialize then
             ns.SoulstoneTracker:Initialize()
         end
+        ns:Log("INFO", "Core", "OneLock_Shards v" .. ns.version .. " initialized.")
     elseif event == "PLAYER_LOGIN" then
         ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/olshards|r for options.")
     end

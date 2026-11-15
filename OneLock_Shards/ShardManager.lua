@@ -13,6 +13,41 @@ local currentShardCount = 0
 local pendingCleanup = false
 
 -------------------------------------------------------------------------------
+-- Container API Helpers (C_Container modern engine fallback)
+-------------------------------------------------------------------------------
+local function GetNumSlots(bagID)
+    if C_Container and C_Container.GetContainerNumSlots then
+        local ok, count = pcall(C_Container.GetContainerNumSlots, bagID)
+        if ok and count then return count end
+    end
+    if _G.GetContainerNumSlots then
+        local ok, count = pcall(_G.GetContainerNumSlots, bagID)
+        if ok and count then return count end
+    end
+    return 0
+end
+
+local function GetItemID(bagID, slotID)
+    if C_Container and C_Container.GetContainerItemID then
+        local ok, id = pcall(C_Container.GetContainerItemID, bagID, slotID)
+        if ok and id then return id end
+    end
+    if _G.GetContainerItemID then
+        local ok, id = pcall(_G.GetContainerItemID, bagID, slotID)
+        if ok and id then return id end
+    end
+    return nil
+end
+
+local function PickupItem(bagID, slotID)
+    if C_Container and C_Container.PickupContainerItem then
+        pcall(C_Container.PickupContainerItem, bagID, slotID)
+    elseif _G.PickupContainerItem then
+        pcall(_G.PickupContainerItem, bagID, slotID)
+    end
+end
+
+-------------------------------------------------------------------------------
 -- Scan Bags for Soul Shards
 -------------------------------------------------------------------------------
 function ShardManager:ScanBags()
@@ -21,10 +56,10 @@ function ShardManager:ScanBags()
 
     -- Bags 0 (backpack) through 4
     for bag = 0, 4 do
-        local numSlots = GetContainerNumSlots(bag)
+        local numSlots = GetNumSlots(bag)
         if numSlots and numSlots > 0 then
             for slot = 1, numSlots do
-                local itemId = GetContainerItemID(bag, slot)
+                local itemId = GetItemID(bag, slot)
                 if itemId == SOUL_SHARD_ITEM_ID then
                     count = count + 1
                     table.insert(shardLocations, { bag = bag, slot = slot })
@@ -83,10 +118,10 @@ function ShardManager:CleanupExcessShards()
         if deleted >= excessCount then break end
 
         local loc = ShardManager.shardLocations[i]
-        local itemId = GetContainerItemID(loc.bag, loc.slot)
+        local itemId = GetItemID(loc.bag, loc.slot)
         if itemId == SOUL_SHARD_ITEM_ID then
             ClearCursor()
-            PickupContainerItem(loc.bag, loc.slot)
+            PickupItem(loc.bag, loc.slot)
             if CursorHasItem() then
                 DeleteCursorItem()
                 deleted = deleted + 1
@@ -96,6 +131,7 @@ function ShardManager:CleanupExcessShards()
 
     pendingCleanup = false
     ns:Print(string.format("Purged |cffffd100%d|r excess Soul Shard(s). Current count: %d", deleted, currentShardCount - deleted))
+    ns:Log("INFO", "ShardManager", string.format("Deleted %d excess Soul Shards (Remaining: %d)", deleted, currentShardCount - deleted))
 end
 
 -------------------------------------------------------------------------------
@@ -119,4 +155,5 @@ function ShardManager:Initialize()
 
     ShardManager.frame = eventFrame
     ShardManager:ScanBags()
+    ns:Log("INFO", "ShardManager", "ShardManager initialized with C_Container methods.")
 end

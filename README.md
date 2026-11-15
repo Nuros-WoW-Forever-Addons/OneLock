@@ -11,8 +11,8 @@ The suite is broken into three lightweight, independently loadable modules:
 | Module | Purpose | Status |
 | :--- | :--- | :--- |
 | **`OneLock_Timers`** | Multi-target raid DoT and crowd-control tracking engine with Pandemic refresh color shifts (< 3.0s) and target grouping. | **Active / Ready** |
-| **`OneLock_Shards`** | Automated Soul Shard inventory management, excess shard cleanup, and persistent 30-minute Soulstone tracking. | **Scaffolded (v0.1.0)** |
-| **`OneLock_Procs`** | High-visibility proc alerts for Shadow Trance (Nightfall) and Backlash, plus target CC immunity detection (Fear/Banish). | **Scaffolded (v0.1.0)** |
+| **`OneLock_Shards`** | Automated Soul Shard inventory management, excess shard cleanup, and persistent 30-minute Soulstone tracking. | **Active / Ready** |
+| **`OneLock_Procs`** | High-visibility proc alerts for Shadow Trance (Nightfall) and Backlash, plus target CC immunity detection (Fear/Banish). | **Active / Ready** |
 
 ---
 
@@ -36,8 +36,7 @@ World of Warcraft/_forever_/Interface/AddOns/
 
 ## ⌨️ Slash Commands
 
-Use `/onelock` or `/ol` to manage `OneLock_Timers`:
-
+### `OneLock_Timers` (`/onelock`, `/ol`)
 - `/ol` — Display available commands and current configuration status.
 - `/ol test` — Toggle simulated multi-target test bars for visual alignment and setup.
 - `/ol unlock` — Unlock the master anchor frame to reposition the timer bars via dragging.
@@ -47,15 +46,27 @@ Use `/onelock` or `/ol` to manage `OneLock_Timers`:
 - `/ol width <100 - 300>` — Set the pixel width of timer bars (e.g., `/ol width 180`).
 - `/ol max <1 - 10>` — Set the maximum number of targets tracked simultaneously (e.g., `/ol max 4`).
 
-*(Stubs for `/olshards` and `/olprocs` are available in their respective modules)*.
+### `OneLock_Shards` (`/olshards`)
+- `/olshards count` — Print current soul shard inventory count.
+- `/olshards cap <1-32>` — Configure maximum soul shard retention cap (default: 24).
+- `/olshards autodelete` — Toggle automatic out-of-combat deletion of excess shards.
+- `/olshards cleanup` — Immediately delete shards above cap out of combat.
+
+### `OneLock_Procs` (`/olprocs`)
+- `/olprocs test` — Trigger a test proc alert banner on screen.
+- `/olprocs sound` — Toggle proc audio alert sound effects.
+- `/olprocs nightfall` — Toggle Shadow Trance alerts.
+- `/olprocs backlash` — Toggle Backlash alerts.
+- `/olprocs immunity` — Toggle target CC immunity alerts.
 
 ---
 
 ## 🎯 Architecture & Safety
 
-- **Interface 16001 Native**: Exclusively targets the WoW Forever Beta client without legacy shims or Dragonflight/TWW retail dependencies.
+- **Interface 16001 Native**: Exclusively targets the WoW Forever Beta client utilizing modern `C_Spell`, `C_Container`, and `C_UnitAuras` engine APIs.
 - **Combat Lockdown Safe**: All visual display bars are driven by non-protected `StatusBar` and `Frame` pools. They can create, anchor, resize, and hide during active raid combat with zero taint risk.
-- **Ecosystem Integration**: Seamlessly registers with `MovableFrames` and `OnePanel` if present in your addon list.
+- **Zero Third-Party Dependencies**: Self-contained with independent drag anchors (`/ol unlock`). No dependencies on `OnePanel` or `MovableFrames`.
+- **Diagnostics Integration**: Includes optional `OneSwatter` bridge for centralized logging and error reporting.
 
 ---
 

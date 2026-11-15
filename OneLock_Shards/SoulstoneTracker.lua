@@ -13,12 +13,12 @@ local currentSoulstone = nil
 
 -- Soulstone spell IDs
 local SOULSTONE_SPELLS = {
-    [20707] = true, -- Minor Soulstone
-    [20762] = true, -- Lesser Soulstone
-    [20763] = true, -- Soulstone
-    [20764] = true, -- Greater Soulstone
-    [20765] = true, -- Major Soulstone
-    [27239] = true, -- Master Soulstone
+    [20707] = "Minor Soulstone",
+    [20762] = "Lesser Soulstone",
+    [20763] = "Soulstone",
+    [20764] = "Greater Soulstone",
+    [20765] = "Major Soulstone",
+    [27239] = "Master Soulstone",
 }
 
 -------------------------------------------------------------------------------
@@ -80,32 +80,26 @@ local function CheckTargetStatus(targetName)
     if not targetName then return "UNKNOWN" end
 
     -- Check party/raid units
-    if IsInRaid() then
-        for i = 1, GetNumGroupMembers() do
+    if IsInRaid and IsInRaid() then
+        local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
+        for i = 1, num do
             local unit = "raid" .. i
             if UnitName(unit) == targetName then
-                if UnitIsDeadOrGhost(unit) then
-                    return "DEAD"
-                else
-                    return "ALIVE"
-                end
+                return (UnitIsDeadOrGhost(unit) and "DEAD") or "ALIVE"
             end
         end
-    elseif IsInGroup() then
-        for i = 1, GetNumSubgroupMembers() do
+    elseif IsInGroup and IsInGroup() then
+        local num = (GetNumSubgroupMembers and GetNumSubgroupMembers()) or 0
+        for i = 1, num do
             local unit = "party" .. i
             if UnitName(unit) == targetName then
-                if UnitIsDeadOrGhost(unit) then
-                    return "DEAD"
-                else
-                    return "ALIVE"
-                end
+                return (UnitIsDeadOrGhost(unit) and "DEAD") or "ALIVE"
             end
         end
     end
 
     if UnitName("target") == targetName then
-        return UnitIsDeadOrGhost("target") and "DEAD" or "ALIVE"
+        return (UnitIsDeadOrGhost("target") and "DEAD") or "ALIVE"
     end
 
     return "ACTIVE"
@@ -147,56 +141,32 @@ local function OnSoulstoneUpdate(self, elapsed)
 end
 
 -------------------------------------------------------------------------------
--- Combat Log Event Listener
--------------------------------------------------------------------------------
-local function OnCombatLogEvent()
-    local timestamp, subevent, hideCaster,
-          sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
-          destGUID, destName, destFlags, destRaidFlags = CombatLogGetCurrentEventInfo()
-
-    if sourceGUID ~= UnitGUID("player") then return end
-
-    if subevent == "SPELL_CAST_SUCCESS" or subevent == "SPELL_AURA_APPLIED" then
-        local spellId, spellName = select(12, CombatLogGetCurrentEventInfo())
-        if spellId and SOULSTONE_SPELLS[spellId] then
-            currentSoulstone = {
-                targetName = destName or UnitName("player"),
-                targetGUID = destGUID,
-                startTime = GetTime(),
-                expirationTime = GetTime() + SOULSTONE_DURATION,
-            }
-            if SoulstoneTracker.hud then
-                SoulstoneTracker.hud:Show()
-            end
-            ns:Print(string.format("Soulstone stored on |cffffd100%s|r (30 minutes).", currentSoulstone.targetName))
-        end
-    elseif subevent == "SPELL_AURA_REMOVED" then
-        local spellId = select(12, CombatLogGetCurrentEventInfo())
-        if spellId and SOULSTONE_SPELLS[spellId] then
-            if currentSoulstone and currentSoulstone.targetGUID == destGUID then
-                currentSoulstone = nil
-                if SoulstoneTracker.hud then
-                    SoulstoneTracker.hud:Hide()
-                end
-                ns:Print("Soulstone buff expired or was consumed.")
-            end
-        end
-    end
-end
-
--------------------------------------------------------------------------------
--- Initialization
+-- Event Listener (UNIT_SPELLCAST_SUCCEEDED)
 -------------------------------------------------------------------------------
 function SoulstoneTracker:Initialize()
     CreateSoulstoneHUD()
 
     local eventFrame = CreateFrame("Frame", "OneLock_SoulstoneTracker_EventFrame")
-    eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-    eventFrame:SetScript("OnEvent", function(self, event)
-        if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-            OnCombatLogEvent()
+    eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    eventFrame:SetScript("OnEvent", function(self, event, unit, castGUID, spellID)
+        if event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player" then
+            if spellID and SOULSTONE_SPELLS[spellID] then
+                local targetName = UnitName("target") or UnitName("player")
+                currentSoulstone = {
+                    targetName = targetName,
+                    targetGUID = UnitGUID("target") or UnitGUID("player"),
+                    startTime = GetTime(),
+                    expirationTime = GetTime() + SOULSTONE_DURATION,
+                }
+                if SoulstoneTracker.hud then
+                    SoulstoneTracker.hud:Show()
+                end
+                ns:Print(string.format("Soulstone stored on |cffffd100%s|r (30 minutes).", targetName))
+                ns:Log("INFO", "SoulstoneTracker", "Soulstone cast on " .. tostring(targetName))
+            end
         end
     end)
 
     SoulstoneTracker.hud:SetScript("OnUpdate", OnSoulstoneUpdate)
+    ns:Log("INFO", "SoulstoneTracker", "SoulstoneTracker initialized.")
 end

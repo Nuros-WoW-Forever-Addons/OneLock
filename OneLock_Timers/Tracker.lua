@@ -1,6 +1,6 @@
 -- ============================================================================
 -- OneLock_Timers - Tracker Engine
--- Multi-target Warlock DoT & CC tracking via COMBAT_LOG_EVENT_UNFILTERED
+-- Multi-target Warlock DoT & CC tracking via modern C_UnitAuras & Nameplate events
 -- Client: WoW Forever Beta (v1.60.1 / Interface 16001)
 -- ============================================================================
 
@@ -10,6 +10,32 @@ ns.Tracker = Tracker
 
 -- Active tracking state: [destGUID] = { guid, name, lastSeen, spells = { [spellName] = { ... } } }
 ns.activeTimers = {}
+
+-------------------------------------------------------------------------------
+-- Modern Spell API Helper (C_Spell.GetSpellInfo returns a table on Forever)
+-------------------------------------------------------------------------------
+local function GetSpellDetails(spellID)
+    if C_Spell and C_Spell.GetSpellInfo then
+        local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+        if ok and info and type(info) == "table" then
+            return info.name, info.iconID or info.originalIconID
+        end
+    end
+    if C_Spell and C_Spell.GetSpellName then
+        local ok, name = pcall(C_Spell.GetSpellName, spellID)
+        local icon = (C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(spellID)) or nil
+        if ok and name then
+            return name, icon
+        end
+    end
+    if _G.GetSpellInfo then
+        local ok, name, _, icon = pcall(_G.GetSpellInfo, spellID)
+        if ok and name then
+            return name, icon
+        end
+    end
+    return nil, nil
+end
 
 -------------------------------------------------------------------------------
 -- Warlock Spell Database & Definitions
@@ -36,14 +62,14 @@ local SPELL_CATALOG = {
 local function InitSpellCatalog()
     for _, def in ipairs(SPELL_CATALOG) do
         local id, baseDuration, category, fallbackName = unpack(def)
-        local name, _, icon = GetSpellInfo(id)
+        local name, icon = GetSpellDetails(id)
         name = name or fallbackName
         if name then
             TRACKED_SPELLS[name] = {
                 spellId = id,
                 name = name,
                 duration = baseDuration,
-                icon = icon or GetSpellTexture(id),
+                icon = icon or "",
                 category = category,
             }
         end
@@ -59,138 +85,139 @@ local function InitSpellCatalog()
 end
 
 -------------------------------------------------------------------------------
--- UnitDebuff Duration Reconciliation
+-- Modern C_UnitAuras Scanner
 -------------------------------------------------------------------------------
-local function ReconcileUnitDebuffs(unit)
+local function ForEachUnitDebuff(unit, callback)
     if not UnitExists(unit) then return end
-    local guid = UnitGUID(unit)
-    if not guid or not ns.activeTimers[guid] then return end
 
-    local targetEntry = ns.activeTimers[guid]
-    local unitName = UnitName(unit)
-    if unitName and unitName ~= "" then
-        targetEntry.name = unitName
+    -- 1. Modern C_UnitAuras.GetDebuffDataByIndex
+    if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
+        local i = 1
+        while true do
+            local aura = C_UnitAuras.GetDebuffDataByIndex(unit, i)
+            if not aura then break end
+            callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            i = i + 1
+        end
+        return
     end
-    targetEntry.lastSeen = GetTime()
 
-    local i = 1
-    while true do
-        local name, icon, count, debuffType, duration, expirationTime, unitCaster, _, _, spellId = UnitDebuff(unit, i)
-        if not name then break end
+    -- 2. Modern C_UnitAuras.GetAuraDataByIndex (Harmful)
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        local i = 1
+        while true do
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+            if not aura then break end
+            callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            i = i + 1
+        end
+        return
+    end
 
-        if unitCaster == "player" and targetEntry.spells[name] then
-            local timer = targetEntry.spells[name]
-            if duration and duration > 0 and expirationTime and expirationTime > 0 then
-                timer.duration = duration
-                timer.expirationTime = expirationTime
-                timer.startTime = expirationTime - duration
+    -- 3. AuraUtil.ForEachAura
+    if AuraUtil and AuraUtil.ForEachAura then
+        AuraUtil.ForEachAura(unit, "HARMFUL", nil, function(aura)
+            if aura then
+                callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
             end
-            if icon then
-                timer.icon = icon
+        end)
+        return
+    end
+
+    -- 4. Legacy UnitDebuff fallback
+    if _G.UnitDebuff then
+        local i = 1
+        while true do
+            local name, icon, count, debuffType, duration, expirationTime, unitCaster, _, _, spellId = _G.UnitDebuff(unit, i)
+            if not name then break end
+            callback(name, icon, count, duration, expirationTime, unitCaster, spellId)
+            i = i + 1
+        end
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Scan and Reconcile Unit Debuffs
+-------------------------------------------------------------------------------
+local function ScanUnit(unit)
+    if not UnitExists(unit) then return end
+    if UnitIsDead(unit) then
+        local deadGUID = UnitGUID(unit)
+        if deadGUID and ns.activeTimers[deadGUID] then
+            ns.activeTimers[deadGUID] = nil
+            if ns.Display and ns.Display.OnTimerUpdated then
+                ns.Display:OnTimerUpdated()
             end
         end
-        i = i + 1
-    end
-end
-
-function Tracker:ReconcileKnownUnits(targetGUID)
-    if UnitGUID("target") == targetGUID then
-        ReconcileUnitDebuffs("target")
-    elseif UnitGUID("focus") == targetGUID then
-        ReconcileUnitDebuffs("focus")
-    elseif UnitGUID("mouseover") == targetGUID then
-        ReconcileUnitDebuffs("mouseover")
-    end
-end
-
--------------------------------------------------------------------------------
--- Combat Log Event Consumer
--------------------------------------------------------------------------------
-local function OnCombatLogEvent()
-    local timestamp, subevent, hideCaster,
-          sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
-          destGUID, destName, destFlags, destRaidFlags = CombatLogGetCurrentEventInfo()
-
-    if not sourceGUID or sourceGUID ~= ns.playerGUID then
         return
     end
 
-    if not destGUID or destGUID == "" then
-        return
-    end
+    local guid = UnitGUID(unit)
+    if not guid then return end
 
+    local unitName = UnitName(unit) or "Unknown"
     local now = GetTime()
+    local foundSpells = {}
+    local anyAdded = false
 
-    -- 1. Aura Applied or Refreshed
-    if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
-        local spellId, spellName = select(12, CombatLogGetCurrentEventInfo())
-        if not spellName then return end
+    ForEachUnitDebuff(unit, function(name, icon, count, duration, expirationTime, sourceUnit, spellId)
+        -- Only track debuffs cast by the player
+        local isPlayerSource = (sourceUnit == "player") or (sourceUnit == nil and duration and duration > 0)
+        if isPlayerSource and name and (TRACKED_SPELLS[name] or (spellId and TRACKED_SPELLS[spellId])) then
+            local spellDef = TRACKED_SPELLS[name] or TRACKED_SPELLS[spellId]
+            local effDuration = (duration and duration > 0) and duration or spellDef.duration
+            local effExpiration = (expirationTime and expirationTime > 0) and expirationTime or (now + effDuration)
+            local effIcon = icon or spellDef.icon
 
-        local spellDef = TRACKED_SPELLS[spellName]
-        if spellDef then
-            local duration = spellDef.duration
-            local expirationTime = now + duration
-            local icon = spellDef.icon or GetSpellTexture(spellId) or ""
-
-            if not ns.activeTimers[destGUID] then
-                ns.activeTimers[destGUID] = {
-                    guid = destGUID,
-                    name = destName or "Unknown",
+            if not ns.activeTimers[guid] then
+                ns.activeTimers[guid] = {
+                    guid = guid,
+                    name = unitName,
                     lastSeen = now,
                     spells = {},
                 }
             else
-                ns.activeTimers[destGUID].lastSeen = now
-                if destName and destName ~= "" then
-                    ns.activeTimers[destGUID].name = destName
-                end
+                ns.activeTimers[guid].name = unitName
+                ns.activeTimers[guid].lastSeen = now
             end
 
-            ns.activeTimers[destGUID].spells[spellName] = {
-                spellId = spellId,
-                spellName = spellName,
-                icon = icon,
-                startTime = now,
-                duration = duration,
-                expirationTime = expirationTime,
+            ns.activeTimers[guid].spells[name] = {
+                spellId = spellId or spellDef.spellId,
+                spellName = name,
+                icon = effIcon,
+                startTime = effExpiration - effDuration,
+                duration = effDuration,
+                expirationTime = effExpiration,
                 category = spellDef.category,
             }
 
-            -- Attempt immediate reconciliation if unit is currently targeted/focused/moused over
-            Tracker:ReconcileKnownUnits(destGUID)
+            foundSpells[name] = true
+            anyAdded = true
+        end
+    end)
 
-            if ns.Display and ns.Display.OnTimerUpdated then
-                ns.Display:OnTimerUpdated()
+    -- If this unit was previously tracked, prune debuffs that are no longer on it
+    if ns.activeTimers[guid] then
+        local removedAny = false
+        for activeName, _ in pairs(ns.activeTimers[guid].spells) do
+            if not foundSpells[activeName] then
+                ns.activeTimers[guid].spells[activeName] = nil
+                removedAny = true
             end
         end
 
-    -- 2. Aura Removed, Broken, or Dispelled
-    elseif subevent == "SPELL_AURA_REMOVED" or subevent == "SPELL_AURA_BROKEN" or subevent == "SPELL_AURA_BROKEN_SPELL" then
-        local spellId, spellName = select(12, CombatLogGetCurrentEventInfo())
-        if spellName and ns.activeTimers[destGUID] and ns.activeTimers[destGUID].spells[spellName] then
-            ns.activeTimers[destGUID].spells[spellName] = nil
-
-            local hasSpells = false
-            for _ in pairs(ns.activeTimers[destGUID].spells) do
-                hasSpells = true
-                break
-            end
-            if not hasSpells then
-                ns.activeTimers[destGUID] = nil
-            end
-
-            if ns.Display and ns.Display.OnTimerUpdated then
-                ns.Display:OnTimerUpdated()
-            end
+        local count = 0
+        for _ in pairs(ns.activeTimers[guid].spells) do
+            count = count + 1
         end
 
-    -- 3. Target Died or Destroyed
-    elseif subevent == "UNIT_DIED" or subevent == "UNIT_DESTROYED" then
-        if ns.activeTimers[destGUID] then
-            ns.activeTimers[destGUID] = nil
-            if ns.Display and ns.Display.OnTimerUpdated then
-                ns.Display:OnTimerUpdated()
-            end
+        if count == 0 then
+            ns.activeTimers[guid] = nil
+            removedAny = true
+        end
+
+        if (anyAdded or removedAny) and ns.Display and ns.Display.OnTimerUpdated then
+            ns.Display:OnTimerUpdated()
         end
     end
 end
@@ -240,30 +267,52 @@ function Tracker:Initialize()
     InitSpellCatalog()
 
     local trackerFrame = CreateFrame("Frame", "OneLock_Timers_TrackerFrame")
-    trackerFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    trackerFrame:RegisterEvent("UNIT_AURA")
     trackerFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
     trackerFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     trackerFrame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+    trackerFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+    trackerFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+    trackerFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     trackerFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-    trackerFrame:SetScript("OnEvent", function(self, event)
-        if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-            OnCombatLogEvent()
+    trackerFrame:SetScript("OnEvent", function(self, event, unit, arg2, arg3)
+        if event == "UNIT_AURA" then
+            if unit then
+                ScanUnit(unit)
+            end
         elseif event == "PLAYER_TARGET_CHANGED" then
-            ReconcileUnitDebuffs("target")
+            ScanUnit("target")
             if ns.Display and ns.Display.OnTargetChanged then
                 ns.Display:OnTargetChanged()
             end
         elseif event == "PLAYER_FOCUS_CHANGED" then
-            ReconcileUnitDebuffs("focus")
+            ScanUnit("focus")
         elseif event == "UPDATE_MOUSEOVER_UNIT" then
-            ReconcileUnitDebuffs("mouseover")
+            ScanUnit("mouseover")
+        elseif event == "NAME_PLATE_UNIT_ADDED" then
+            if unit then
+                ScanUnit(unit)
+            end
+        elseif event == "NAME_PLATE_UNIT_REMOVED" then
+            if unit and UnitIsDead(unit) then
+                local guid = UnitGUID(unit)
+                if guid and ns.activeTimers[guid] then
+                    ns.activeTimers[guid] = nil
+                    if ns.Display and ns.Display.OnTimerUpdated then
+                        ns.Display:OnTimerUpdated()
+                    end
+                end
+            end
+        elseif event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player" then
+            -- Immediately refresh target when player finishes casting
+            ScanUnit("target")
         elseif event == "PLAYER_REGEN_ENABLED" then
-            -- Refresh player GUID just in case
             ns.playerGUID = UnitGUID("player")
         end
     end)
 
     trackerFrame:SetScript("OnUpdate", OnGarbageCollectUpdate)
     Tracker.frame = trackerFrame
+    ns:Log("INFO", "Tracker", "Modern Tracker initialized with C_UnitAuras and nameplate routing.")
 end
