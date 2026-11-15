@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.4] - 2026-11-15
+
+### Changed
+- **Removed Static Anchor Header Bar**: Removed the static `OneLock Timers (Drag to Move)` banner from normal display. The first target header/bar now anchors directly to the anchor coordinates with zero extra padding or permanent boxes.
+- **Translucent Purple Shadow Box (Edit Mode)**: Added a sleek, translucent purple shadow box with glowing violet borders that only appears when "Edit Mode" is toggled from the Options Panel (`[Move Anchor (Edit)]`). Dragging the purple shadow box repositions the anchor freely.
+- **Zero Footprint When Inactive**: When locked and not in test mode, the anchor is completely invisible until a target is selected and an active tracked spell is cast.
+- **Continuous Test Bar Looping**: Updated test mode so simulated bars continuously count down, spark, and loop their Pandemic highlight instead of freezing at `0.0s`.
+
+---
+
 ## [0.1.3] - 2026-11-15
 
 ### Fixed

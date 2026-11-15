@@ -208,26 +208,26 @@ local function PopulateControls(content, isStandalone)
     -- ========================================================================
     AddSectionHeader("|cff9966ffOneLock: Timers (Multi-Target HUD)|r")
 
-    -- Row 1: Action buttons (Unlock, Reset, Test)
-    local btnUnlock = CreateButton(content, "Unlock Anchor", 120, 24, function(self)
+    -- Row 1: Action buttons (Move Anchor / Edit Mode, Reset, Test)
+    local btnUnlock = CreateButton(content, "Move Anchor (Edit)", 140, 24, function(self)
         if not ns.db then return end
         ns.db.locked = not ns.db.locked
         if ns.Display and ns.Display.UpdateAnchorState then
             ns.Display:UpdateAnchorState()
         end
-        self:SetText(ns.db.locked and "Unlock Anchor" or "Lock Anchor")
-        ns:Print("Anchor " .. (ns.db.locked and "|cffff4444LOCKED|r." or "|cff44ff44UNLOCKED|r."))
+        self:SetText(ns.db.locked and "Move Anchor (Edit)" or "Lock Anchor")
+        ns:Print("Anchor " .. (ns.db.locked and "|cffff4444LOCKED (Hidden)|r." or "|cff44ff44UNLOCKED (Move Purple Box)|r."))
     end)
     btnUnlock:SetPoint("TOPLEFT", content, "TOPLEFT", 4, curY)
 
     btnUnlock.Refresh = function(self)
         if ns.db then
-            self:SetText(ns.db.locked and "Unlock Anchor" or "Lock Anchor")
+            self:SetText(ns.db.locked and "Move Anchor (Edit)" or "Lock Anchor")
         end
     end
     table.insert(refreshables, btnUnlock)
 
-    local btnReset = CreateButton(content, "Reset Anchor", 110, 24, function()
+    local btnReset = CreateButton(content, "Reset Anchor", 100, 24, function()
         if ns.db then
             ns.db.position.point = "CENTER"
             ns.db.position.relativePoint = "CENTER"

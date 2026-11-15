@@ -11,8 +11,8 @@ ns.version = "0.1.0"
 
 -- Database Defaults
 local defaultDB = {
-    version = 1,
-    locked = false,
+    version = 2,
+    locked = true, -- Default locked (hidden until target with DoTs exists)
     barWidth = 160,
     barHeight = 16,
     barScale = 1.0,
@@ -52,6 +52,12 @@ end
 local function InitDB()
     if not OneLockTimersDB then
         OneLockTimersDB = {}
+    end
+
+    -- Upgrade migration to lock by default
+    if not OneLockTimersDB.version or OneLockTimersDB.version < 2 then
+        OneLockTimersDB.locked = true
+        OneLockTimersDB.version = 2
     end
 
     for k, v in pairs(defaultDB) do

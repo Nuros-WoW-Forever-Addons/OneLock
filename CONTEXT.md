@@ -164,6 +164,18 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.5 (Purple Shadow Box Edit Mode & Header Bar Removal)
+- **Removed Static "Drag to Move" Header Bar**:
+  - Eliminated the permanent yellow/black anchor box above the target frames.
+  - Positioned the topmost target header and timer bar directly at the anchor point coordinates (`TOPLEFT, 0, 0`).
+- **Introduced Translucent Purple Shadow Box**:
+  - Attached `OneLockTimersShadowBox` to `OneLockTimersAnchor` with a deep purple translucent backdrop (`0.20, 0.08, 0.35, 0.65`) and glowing violet border (`0.75, 0.35, 1.00, 0.95`).
+  - Labeled `OneLock Timers (Drag to Move)`.
+  - When locked (normal play): completely hidden with 0 screen footprint. Nothing shows until a target is selected and a tracked spell is cast.
+  - When unlocked (Edit Mode via Options Panel `[Move Anchor (Edit)]`): visible and draggable anywhere on screen.
+- **Continuous Test Bar Looping**:
+  - Enabled continuous timer cycling in test mode so test bars count down, spark, turn amber during Pandemic window (< 3.0s), and smoothly loop without sticking at `0.0s`.
+
 ### Spin 0.1.4 (Test Mode Spell Texture API & Stepper Initialization Fix)
 - **Resolved Toggle Test Bars Crash (`GetSpellTexture` nil call)**:
   - Fixed `Display.lua:238: attempt to call a nil value ('GetSpellTexture')` when clicking `[Toggle Test Bars]`.

@@ -54,69 +54,75 @@ local function FormatTime(seconds)
 end
 
 -------------------------------------------------------------------------------
--- Master Anchor Construction
+-- Master Anchor & Edit Mode Purple Shadow Box
+-- When locked: Invisible point frame with zero screen footprint.
+-- When unlocked (Edit Mode): Purple translucent shadow box for dragging.
 -------------------------------------------------------------------------------
 local function CreateMasterAnchor()
     local db = ns.db
-    local anchor = CreateFrame("Frame", "OneLockTimersAnchor", UIParent, "BackdropTemplate")
-    anchor:SetSize(db.barWidth or 160, 24)
+    local anchor = CreateFrame("Frame", "OneLockTimersAnchor", UIParent)
+    anchor:SetSize(db.barWidth or 160, 2)
     anchor:SetScale(db.barScale or 1.0)
     anchor:SetClampedToScreen(true)
+    anchor:SetMovable(true)
 
     local pos = db.position or { point = "CENTER", relativePoint = "CENTER", x = 160, y = 0 }
     anchor:ClearAllPoints()
     anchor:SetPoint(pos.point or "CENTER", UIParent, pos.relativePoint or "CENTER", pos.x or 0, pos.y or 0)
 
-    anchor:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
+    -- Edit Mode Purple Shadow Box
+    local shadowBox = CreateFrame("Frame", "OneLockTimersShadowBox", anchor, "BackdropTemplate")
+    shadowBox:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
+    shadowBox:SetSize(db.barWidth or 160, 120)
+    shadowBox:SetFrameStrata("HIGH")
+
+    shadowBox:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 16, edgeSize = 12,
         insets = { left = 2, right = 2, top = 2, bottom = 2 }
     })
-    anchor:SetBackdropColor(0.08, 0.08, 0.12, 0.85)
-    anchor:SetBackdropBorderColor(0.8, 0.7, 0.2, 0.9)
+    shadowBox:SetBackdropColor(0.20, 0.08, 0.35, 0.65) -- Translucent deep purple shadow
+    shadowBox:SetBackdropBorderColor(0.75, 0.35, 1.00, 0.95) -- Glowing violet border
 
-    local title = anchor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    title:SetPoint("CENTER", anchor, "CENTER", 0, 0)
-    title:SetText("|cffffd100OneLock Timers|r (Drag to Move)")
-    anchor.title = title
+    local title = shadowBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("CENTER", shadowBox, "CENTER", 0, 8)
+    title:SetText("|cffdd99ffOneLock Timers|r")
 
-    anchor:SetMovable(true)
-    anchor:RegisterForDrag("LeftButton")
+    local hint = shadowBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    hint:SetPoint("TOP", title, "BOTTOM", 0, -4)
+    hint:SetText("|cffa8a8a8(Drag to Move)|r")
 
-    anchor:SetScript("OnDragStart", function(self)
-        if not ns.db.locked then
-            self:StartMoving()
-        end
+    shadowBox:EnableMouse(true)
+    shadowBox:RegisterForDrag("LeftButton")
+
+    shadowBox:SetScript("OnDragStart", function(self)
+        anchor:StartMoving()
     end)
 
-    anchor:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint()
+    shadowBox:SetScript("OnDragStop", function(self)
+        anchor:StopMovingOrSizing()
+        local point, _, relPoint, x, y = anchor:GetPoint()
         ns.db.position.point = point
         ns.db.position.relativePoint = relPoint
         ns.db.position.x = x
         ns.db.position.y = y
     end)
 
+    anchor.shadowBox = shadowBox
     Display.anchor = anchor
     Display:UpdateAnchorState()
 end
 
 function Display:UpdateAnchorState()
     local anchor = self.anchor
-    if not anchor then return end
+    if not anchor or not anchor.shadowBox then return end
 
     if ns.db.locked then
-        anchor:EnableMouse(false)
-        anchor:SetBackdropColor(0, 0, 0, 0)
-        anchor:SetBackdropBorderColor(0, 0, 0, 0)
-        anchor.title:Hide()
+        anchor.shadowBox:Hide()
     else
-        anchor:EnableMouse(true)
-        anchor:SetBackdropColor(0.08, 0.08, 0.12, 0.85)
-        anchor:SetBackdropBorderColor(0.8, 0.7, 0.2, 0.9)
-        anchor.title:Show()
+        anchor.shadowBox:SetWidth(ns.db.barWidth or 160)
+        anchor.shadowBox:Show()
     end
 end
 
@@ -362,7 +368,7 @@ function Display:UpdateBars()
             local header = AcquireHeader()
             header:ClearAllPoints()
             if previousElement == Display.anchor then
-                header:SetPoint("TOPLEFT", Display.anchor, "BOTTOMLEFT", 0, -4)
+                header:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
             else
                 header:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -6)
             end
@@ -397,7 +403,11 @@ function Display:UpdateBars()
         for _, timer in ipairs(spellList) do
             local bar = AcquireBar()
             bar:ClearAllPoints()
-            bar:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -2)
+            if previousElement == Display.anchor then
+                bar:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
+            else
+                bar:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -2)
+            end
 
             bar.timerData = timer
             bar:SetMinMaxValues(0, timer.duration or 18)
@@ -440,7 +450,12 @@ local function OnDisplayFrameUpdate(self, elapsed)
         local timer = bar.timerData
         if timer and timer.expirationTime then
             local remaining = timer.expirationTime - now
-            if remaining <= 0 then
+            if ns.isTestMode and remaining <= 0 then
+                -- Automatically cycle test bars so they constantly animate and loop
+                local dur = timer.duration or 18
+                timer.expirationTime = now + dur
+                remaining = dur
+            elseif remaining <= 0 then
                 remaining = 0
             end
 
