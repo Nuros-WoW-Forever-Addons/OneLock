@@ -164,6 +164,14 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.4 (Test Mode Spell Texture API & Stepper Initialization Fix)
+- **Resolved Toggle Test Bars Crash (`GetSpellTexture` nil call)**:
+  - Fixed `Display.lua:238: attempt to call a nil value ('GetSpellTexture')` when clicking `[Toggle Test Bars]`.
+  - Replaced legacy global `GetSpellTexture` with `GetSpellTextureSafe` using modern `C_Spell.GetSpellTexture` and `C_Spell.GetSpellInfo` (table `iconID`).
+- **Resolved Stepper Display Latency (Blank Initial Value)**:
+  - Fixed issue where the Soul Shard cap stepper (and other steppers) started blank until `+` or `-` was clicked.
+  - Added immediate `container.Refresh()` and `cb.Refresh()` calls upon control creation, ensuring initial values (e.g. `24`, `160 px`) populate immediately.
+
 ### Spin 0.1.3 (Dedicated Scroll Child Decoupling for Standalone Options Window)
 - **Resolved Empty Standalone Options Window**:
   - Identified root cause: The previous implementation shared a single `uiContentFrame` between the embedded Blizzard Settings canvas and the standalone window by calling `SetParent` and `SetScrollChild` dynamically. When clicking `[Open Standalone Window]`, hiding `SettingsPanel` propagated a `Hide()` call to all its children and detached canvas focus, leaving the reparented content hidden.

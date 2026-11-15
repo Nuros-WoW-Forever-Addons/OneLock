@@ -18,6 +18,27 @@ local activeBars = {}
 local STATUS_BAR_TEX = "Interface\\TargetingFrame\\UI-StatusBar"
 
 -------------------------------------------------------------------------------
+-- Safe Spell Icon Helper (C_Spell modern API)
+-------------------------------------------------------------------------------
+local function GetSpellTextureSafe(spellID, fallback)
+    if C_Spell and C_Spell.GetSpellTexture then
+        local ok, tex = pcall(C_Spell.GetSpellTexture, spellID)
+        if ok and tex then return tex end
+    end
+    if C_Spell and C_Spell.GetSpellInfo then
+        local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+        if ok and info and type(info) == "table" and (info.iconID or info.originalIconID) then
+            return info.iconID or info.originalIconID
+        end
+    end
+    if _G.GetSpellTexture then
+        local ok, tex = pcall(_G.GetSpellTexture, spellID)
+        if ok and tex then return tex end
+    end
+    return fallback or ""
+end
+
+-------------------------------------------------------------------------------
 -- Time Formatter
 -------------------------------------------------------------------------------
 local function FormatTime(seconds)
@@ -235,21 +256,21 @@ function Display:ToggleTestMode()
                     ["Corruption"] = {
                         spellName = "Corruption",
                         spellId = 172,
-                        icon = GetSpellTexture(172) or "Interface\\Icons\\Spell_Shadow_AbominationExplosion",
+                        icon = GetSpellTextureSafe(172, "Interface\\Icons\\Spell_Shadow_AbominationExplosion"),
                         duration = 18,
                         expirationTime = now + 2.5, -- In Pandemic window (< 3.0s)
                     },
                     ["Unstable Affliction"] = {
                         spellName = "Unstable Affliction",
                         spellId = 30108,
-                        icon = GetSpellTexture(30108) or "Interface\\Icons\\Spell_Shadow_UnstableAffliction_3",
+                        icon = GetSpellTextureSafe(30108, "Interface\\Icons\\Spell_Shadow_UnstableAffliction_3"),
                         duration = 15,
                         expirationTime = now + 8.2,
                     },
                     ["Immolate"] = {
                         spellName = "Immolate",
                         spellId = 348,
-                        icon = GetSpellTexture(348) or "Interface\\Icons\\Spell_Fire_Immolation",
+                        icon = GetSpellTextureSafe(348, "Interface\\Icons\\Spell_Fire_Immolation"),
                         duration = 15,
                         expirationTime = now + 12.0,
                     },
@@ -264,14 +285,14 @@ function Display:ToggleTestMode()
                     ["Corruption"] = {
                         spellName = "Corruption",
                         spellId = 172,
-                        icon = GetSpellTexture(172) or "Interface\\Icons\\Spell_Shadow_AbominationExplosion",
+                        icon = GetSpellTextureSafe(172, "Interface\\Icons\\Spell_Shadow_AbominationExplosion"),
                         duration = 18,
                         expirationTime = now + 14.5,
                     },
                     ["Fear"] = {
                         spellName = "Fear",
                         spellId = 5782,
-                        icon = GetSpellTexture(5782) or "Interface\\Icons\\Spell_Shadow_Possession",
+                        icon = GetSpellTextureSafe(5782, "Interface\\Icons\\Spell_Shadow_Possession"),
                         duration = 20,
                         expirationTime = now + 17.8,
                     },

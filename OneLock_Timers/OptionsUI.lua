@@ -85,6 +85,7 @@ local function CreateCheckbox(parent, labelText, getValue, setValue, onChange)
         cb:SetChecked(getValue() and true or false)
     end
     cb:SetScript("OnShow", cb.Refresh)
+    cb.Refresh()
     cb:SetScript("OnClick", function(self)
         local val = self:GetChecked() and true or false
         setValue(val)
@@ -132,6 +133,7 @@ local function CreateStepper(parent, labelText, minVal, maxVal, step, getter, se
         valText:SetText("|cffffd100" .. string.format(formatStr or "%d", getter()) .. "|r")
     end
     container:SetScript("OnShow", container.Refresh)
+    container.Refresh()
 
     return container
 end
@@ -173,6 +175,7 @@ local function CreateColorSwatch(parent, labelText, getter, setter, onChange)
 
     container.Refresh = UpdateSwatch
     container:SetScript("OnShow", UpdateSwatch)
+    UpdateSwatch()
     return container
 end
 
@@ -343,8 +346,11 @@ local function PopulateControls(content, isStandalone)
     AddSectionHeader("|cff9966ffOneLock: Shards (Inventory & Soulstone)|r")
 
     local stepShards = CreateStepper(content, "Max Soul Shards Cap:", 1, 32, 1,
-        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.maxShards) or 24 end,
-        function(v) if _G.OneLockShardsDB then _G.OneLockShardsDB.maxShards = v end end,
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.maxShards) or (_G.OneLock_Shards and _G.OneLock_Shards.db and _G.OneLock_Shards.db.maxShards) or 24 end,
+        function(v)
+            if _G.OneLockShardsDB then _G.OneLockShardsDB.maxShards = v end
+            if _G.OneLock_Shards and _G.OneLock_Shards.db then _G.OneLock_Shards.db.maxShards = v end
+        end,
         "%d",
         nil
     )

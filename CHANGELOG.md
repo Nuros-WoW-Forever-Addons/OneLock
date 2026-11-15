@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-11-15
+
+### Fixed
+- **Toggle Test Bars Error**: Fixed fatal `attempt to call a nil value ('GetSpellTexture')` at `Display.lua:238` by introducing `GetSpellTextureSafe` using modern `C_Spell.GetSpellTexture` and `C_Spell.GetSpellInfo`.
+- **Options Stepper Initial Value Display**: Fixed an issue where the Soul Shards cap stepper displayed blank instead of `24` until a button was clicked. All steppers, checkboxes, and swatches now update immediately upon instantiation.
+
+---
+
 ## [0.1.2] - 2026-11-15
 
 ### Added
