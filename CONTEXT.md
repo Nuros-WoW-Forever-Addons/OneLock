@@ -164,6 +164,14 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.3 (Dedicated Scroll Child Decoupling for Standalone Options Window)
+- **Resolved Empty Standalone Options Window**:
+  - Identified root cause: The previous implementation shared a single `uiContentFrame` between the embedded Blizzard Settings canvas and the standalone window by calling `SetParent` and `SetScrollChild` dynamically. When clicking `[Open Standalone Window]`, hiding `SettingsPanel` propagated a `Hide()` call to all its children and detached canvas focus, leaving the reparented content hidden.
+  - Decoupled into two completely independent, dedicated content child hierarchies:
+    - `OneLockStandaloneContent`: permanently parented to the standalone floating window's scrollframe.
+    - `OneLockEmbeddedContent`: permanently parented to the Blizzard Settings canvas scrollframe.
+  - Neither window reparents or touches the other's frames, guaranteeing the standalone window is populated immediately upon display.
+
 ### Spin 0.1.2 (Blizzard Addons Settings & Standalone Options Panel)
 - **Game Menu Options Panel (Settings -> AddOns -> OneLock)**:
   - Registered canvas category via `Settings.RegisterCanvasLayoutCategory` and `Settings.RegisterAddOnCategory`.

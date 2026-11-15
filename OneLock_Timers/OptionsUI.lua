@@ -10,7 +10,6 @@ ns.OptionsUI = OptionsUI
 
 local standaloneWindow = nil
 local blizzardCategoryPanel = nil
-local uiContentFrame = nil
 
 local backdropTemplate = BackdropTemplateMixin and "BackdropTemplate" or nil
 
@@ -178,19 +177,13 @@ local function CreateColorSwatch(parent, labelText, getter, setter, onChange)
 end
 
 -------------------------------------------------------------------------------
--- Shared Content Frame (Reparents to Embedded Canvas or Standalone Frame)
+-- Populate Controls on a Dedicated Content Container Frame
 -------------------------------------------------------------------------------
-local function GetOrCreateUIContent()
-    if uiContentFrame then
-        return uiContentFrame
-    end
-
-    local content = CreateFrame("Frame", "OneLockOptionsContent")
-    content:SetSize(480, 720)
-
+local function PopulateControls(content, isStandalone)
     local curY = -8
+    local refreshables = {}
 
-    -- Header helper
+    -- Section Header Helper
     local function AddSectionHeader(titleText)
         local bar = content:CreateTexture(nil, "ARTWORK")
         bar:SetPoint("TOPLEFT", content, "TOPLEFT", 0, curY)
@@ -229,7 +222,7 @@ local function GetOrCreateUIContent()
             self:SetText(ns.db.locked and "Unlock Anchor" or "Lock Anchor")
         end
     end
-    btnUnlock:SetScript("OnShow", btnUnlock.Refresh)
+    table.insert(refreshables, btnUnlock)
 
     local btnReset = CreateButton(content, "Reset Anchor", 110, 24, function()
         if ns.db then
@@ -263,6 +256,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     stepWidth:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepWidth)
     curY = curY - 30
 
     local stepHeight = CreateStepper(content, "Timer Bar Height:", 12, 28, 2,
@@ -272,6 +266,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     stepHeight:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepHeight)
     curY = curY - 30
 
     local stepScale = CreateStepper(content, "Frame Scale:", 0.5, 1.8, 0.05,
@@ -281,6 +276,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     stepScale:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepScale)
     curY = curY - 30
 
     local stepMax = CreateStepper(content, "Max Visible Targets:", 1, 10, 1,
@@ -290,6 +286,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     stepMax:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepMax)
     curY = curY - 30
 
     local stepPan = CreateStepper(content, "Pandemic Refresh Window:", 1.0, 5.0, 0.5,
@@ -299,6 +296,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     stepPan:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepPan)
     curY = curY - 32
 
     -- Checkboxes: Target Header & Spell Icons
@@ -308,6 +306,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     cbHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbHeader)
     curY = curY - 26
 
     local cbIcon = CreateCheckbox(content, "Display Spell Icons on Bars",
@@ -316,6 +315,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     cbIcon:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbIcon)
     curY = curY - 32
 
     -- Color Swatches: Normal & Pandemic Color
@@ -325,6 +325,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     swatchNormal:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, swatchNormal)
     curY = curY - 28
 
     local swatchPandemic = CreateColorSwatch(content, "Pandemic Color (< 3.0s):",
@@ -333,6 +334,7 @@ local function GetOrCreateUIContent()
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
     )
     swatchPandemic:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, swatchPandemic)
     curY = curY - 40
 
     -- ========================================================================
@@ -347,6 +349,7 @@ local function GetOrCreateUIContent()
         nil
     )
     stepShards:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepShards)
     curY = curY - 30
 
     local cbAutoDelete = CreateCheckbox(content, "Auto-delete excess Soul Shards (Runs out of combat)",
@@ -355,6 +358,7 @@ local function GetOrCreateUIContent()
         nil
     )
     cbAutoDelete:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbAutoDelete)
     curY = curY - 30
 
     local btnClean = CreateButton(content, "Clean Up Excess Shards Now", 200, 24, function()
@@ -376,6 +380,7 @@ local function GetOrCreateUIContent()
         nil
     )
     cbNightfall:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbNightfall)
     curY = curY - 26
 
     local cbBacklash = CreateCheckbox(content, "Enable Backlash Alerts",
@@ -384,6 +389,7 @@ local function GetOrCreateUIContent()
         nil
     )
     cbBacklash:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbBacklash)
     curY = curY - 26
 
     local cbImmunity = CreateCheckbox(content, "Enable CC Target Immunity Alerts (Fear / Banish)",
@@ -392,6 +398,7 @@ local function GetOrCreateUIContent()
         nil
     )
     cbImmunity:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbImmunity)
     curY = curY - 26
 
     local cbAudio = CreateCheckbox(content, "Play Sound Warning on Procs",
@@ -400,6 +407,7 @@ local function GetOrCreateUIContent()
         nil
     )
     cbAudio:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbAudio)
     curY = curY - 30
 
     local btnTestProc = CreateButton(content, "Trigger Test Proc Alert Banner", 220, 24, function()
@@ -410,13 +418,22 @@ local function GetOrCreateUIContent()
     btnTestProc:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     curY = curY - 40
 
-    content:SetHeight(math.abs(curY) + 20)
-    uiContentFrame = content
+    content:SetHeight(math.abs(curY) + 30)
+
+    content.RefreshAll = function()
+        for _, ctrl in ipairs(refreshables) do
+            if ctrl.Refresh then
+                ctrl:Refresh()
+            end
+        end
+    end
+
+    content:SetScript("OnShow", content.RefreshAll)
     return content
 end
 
 -------------------------------------------------------------------------------
--- Standalone Floating Options Window
+-- Standalone Floating Options Window (Completely Self-Contained)
 -------------------------------------------------------------------------------
 function ns.ShowStandaloneUI()
     if not standaloneWindow then
@@ -438,7 +455,7 @@ function ns.ShowStandaloneUI()
             insets = { left = 5, right = 5, top = 5, bottom = 5 }
         })
         if f.SetBackdropColor then
-            f:SetBackdropColor(0.04, 0.05, 0.08, 0.95)
+            f:SetBackdropColor(0.04, 0.05, 0.08, 0.96)
             f:SetBackdropBorderColor(0.7, 0.5, 0.9, 0.95) -- Warlock Violet Accent
         end
 
@@ -482,30 +499,40 @@ function ns.ShowStandaloneUI()
         scrollFrame:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 6)
         f.scrollFrame = scrollFrame
 
+        -- Create dedicated content child inside standalone scroll frame
+        local content = CreateFrame("Frame", "OneLockStandaloneContent", scrollFrame)
+        content:SetSize(460, 720)
+        PopulateControls(content, true)
+        scrollFrame:SetScrollChild(content)
+        content:Show()
+        f.content = content
+
         if UISpecialFrames then
             table.insert(UISpecialFrames, "OneLockOptionsFrame")
         end
 
         f:SetScript("OnShow", function()
-            -- Close Blizzard options if open to prevent screen clutter
-            if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then
-                HideUIPanel(InterfaceOptionsFrame)
+            if f.content and f.content.RefreshAll then
+                f.content:RefreshAll()
             end
-            if SettingsPanel and SettingsPanel:IsShown() then
-                HideUIPanel(SettingsPanel)
-            end
-
-            local content = GetOrCreateUIContent()
-            content:SetParent(scrollFrame)
-            scrollFrame:SetScrollChild(content)
-            content:Show()
         end)
 
         standaloneWindow = f
     end
 
+    -- Close Game Menu options if open to clear view
+    if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then
+        HideUIPanel(InterfaceOptionsFrame)
+    end
+    if SettingsPanel and SettingsPanel:IsShown() then
+        HideUIPanel(SettingsPanel)
+    end
+
     if not standaloneWindow:IsShown() then
         standaloneWindow:Show()
+    end
+    if standaloneWindow.content and standaloneWindow.content.RefreshAll then
+        standaloneWindow.content:RefreshAll()
     end
 end
 
@@ -535,7 +562,7 @@ local function RegisterBlizzardCategory()
     subtitle:SetText("Modular Warlock raid utility suite for WoW: Forever (v1.60.1).")
 
     -- Pop-out Button to open the standalone options panel
-    local btnPopOut = CreateButton(panel, "Open Standalone Window", 210, 26, function()
+    local btnPopOut = CreateButton(panel, "Open Standalone Window", 220, 26, function()
         ns.ShowStandaloneUI()
     end)
     btnPopOut:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -12)
@@ -544,21 +571,24 @@ local function RegisterBlizzardCategory()
     hint:SetPoint("LEFT", btnPopOut, "RIGHT", 10, 0)
     hint:SetText("(Opens movable floating window & closes Game Menu)")
 
-    -- Embedded ScrollFrame
+    -- Dedicated Embedded ScrollFrame
     local scrollFrame = CreateFrame("ScrollFrame", "OneLockBlizzardScrollFrame", panel, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -88)
     scrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -30, 10)
     panel.scrollFrame = scrollFrame
 
-    panel:SetScript("OnShow", function()
-        if standaloneWindow and standaloneWindow:IsShown() then
-            standaloneWindow:Hide()
-        end
+    -- Create dedicated embedded content child
+    local embeddedContent = CreateFrame("Frame", "OneLockEmbeddedContent", scrollFrame)
+    embeddedContent:SetSize(580, 720)
+    PopulateControls(embeddedContent, false)
+    scrollFrame:SetScrollChild(embeddedContent)
+    embeddedContent:Show()
+    panel.content = embeddedContent
 
-        local content = GetOrCreateUIContent()
-        content:SetParent(scrollFrame)
-        scrollFrame:SetScrollChild(content)
-        content:Show()
+    panel:SetScript("OnShow", function()
+        if embeddedContent and embeddedContent.RefreshAll then
+            embeddedContent:RefreshAll()
+        end
     end)
 
     -- Register with modern Settings or legacy InterfaceOptions
