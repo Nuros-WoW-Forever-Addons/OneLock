@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.2] - 2026-11-15
+
+### Added
+- **Game Menu Options Panel (Settings -> AddOns -> OneLock)**:
+  - Registered canvas category with Blizzard's modern `Settings.RegisterCanvasLayoutCategory` and `Settings.RegisterAddOnCategory`.
+  - Added button `[Open Standalone Window]` to transition from the fullscreen Blizzard menu into a floating HUD editor.
+- **Standalone Options Panel (`OneLockOptionsFrame`)**:
+  - Independent, movable floating options frame styled in obsidian with warlock violet accents, title bar drag handles, close button, and ESC closure (`UISpecialFrames`).
+  - Implemented interactive steppers, checkboxes, color swatches, and action buttons for:
+    - **OneLock_Timers**: Unlock/Lock anchor, Reset position, Toggle test bars, Width, Height, Scale, Max Visible Targets, Pandemic threshold, Header/Icon toggles, and Normal/Pandemic Color Pickers.
+    - **OneLock_Shards**: Max Soul Shards cap, out-of-combat auto-deletion toggle, and manual "Clean Up Now" button.
+    - **OneLock_Procs**: Nightfall, Backlash, and CC Immunity toggles, audio warning toggle, and "Trigger Test Proc Alert" button.
+- **Slash Command Integration**:
+  - Running `/ol`, `/onelock`, `/olshards`, or `/olprocs` with no arguments or `config`/`options` now toggles the standalone options window.
+
+---
+
 ## [0.1.1] - 2026-11-15
 
 ### Fixed

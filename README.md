@@ -34,7 +34,20 @@ World of Warcraft/_forever_/Interface/AddOns/
 
 ---
 
-## ⌨️ Slash Commands
+## ⚙️ Options & Configuration
+
+OneLock includes a full graphical configuration panel available in two modes:
+
+1. **In-Game Settings Menu**:
+   - Press `ESC` -> **Options** -> **AddOns** tab -> select **OneLock**.
+   - Includes an **`[Open Standalone Window]`** button to pop out into a floating HUD editor and close the Game Menu.
+2. **Standalone Floating Window**:
+   - Type `/ol` (or `/onelock`, `/olshards`, `/olprocs`) at any time to open or close the movable options panel directly.
+   - Configure timer bar dimensions, scale, colors, test bars, soul shard limits, and proc alerts with live updates.
+
+---
+
+## ⌨️ Slash Commands (Quick Shortcuts)
 
 ### `OneLock_Timers` (`/onelock`, `/ol`)
 - `/ol` — Display available commands and current configuration status.

@@ -60,7 +60,11 @@ local function HandleSlashCommand(msg)
     local cmd, arg = msg:match("^(%S+)%s*(.-)$")
     cmd = cmd and cmd:lower() or ""
 
-    if cmd == "count" then
+    if cmd == "" or cmd == "options" or cmd == "config" or cmd == "gui" then
+        if _G.OneLock_Timers and _G.OneLock_Timers.ToggleOptionsUI then
+            _G.OneLock_Timers.ToggleOptionsUI()
+        end
+    elseif cmd == "count" then
         if ns.ShardManager and ns.ShardManager.GetShardCount then
             local count = ns.ShardManager:GetShardCount()
             ns:Print(string.format("Soul Shards in inventory: |cffffd100%d|r (Cap: %d)", count, ns.db.maxShards))

@@ -79,7 +79,11 @@ local function HandleSlashCommand(msg)
     local cmd, arg = msg:match("^(%S+)%s*(.-)$")
     cmd = cmd and cmd:lower() or ""
 
-    if cmd == "unlock" then
+    if cmd == "" or cmd == "options" or cmd == "config" or cmd == "gui" then
+        if ns.ToggleOptionsUI then
+            ns.ToggleOptionsUI()
+        end
+    elseif cmd == "unlock" then
         ns.db.locked = false
         if ns.Display and ns.Display.UpdateAnchorState then
             ns.Display:UpdateAnchorState()
@@ -151,6 +155,7 @@ local function HandleSlashCommand(msg)
         end
     else
         ns:Print("OneLock Timers commands:")
+        print("  |cffffd100/ol|r        — Open graphical Options Panel")
         print("  |cffffd100/ol unlock|r — Unlock anchor to drag and move bars")
         print("  |cffffd100/ol lock|r   — Lock anchor in current position")
         print("  |cffffd100/ol reset|r  — Reset anchor to default position")

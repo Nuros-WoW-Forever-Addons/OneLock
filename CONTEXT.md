@@ -164,6 +164,19 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.2 (Blizzard Addons Settings & Standalone Options Panel)
+- **Game Menu Options Panel (Settings -> AddOns -> OneLock)**:
+  - Registered canvas category via `Settings.RegisterCanvasLayoutCategory` and `Settings.RegisterAddOnCategory`.
+  - Added button `[Open Standalone Window]` directly within the Blizzard options canvas, closing the Game Menu and opening the floating HUD editor.
+- **Standalone Floating Options Window (`OneLockOptionsFrame`)**:
+  - Movable, resizable dialog with dark obsidian/violet theme, header drag bar, close button, and ESC key support (`UISpecialFrames`).
+  - Integrated full suite controls across all three modules:
+    - **OneLock_Timers**: Unlock/Lock anchor, Reset position, Toggle test bars, Bar Width/Height/Scale steppers, Max Targets stepper, Pandemic Window threshold, Target Header and Spell Icon toggles, and dual Color Pickers.
+    - **OneLock_Shards**: Max Soul Shard cap stepper, out-of-combat auto-deletion toggle, and manual "Clean Up Now" button.
+    - **OneLock_Procs**: Nightfall, Backlash, CC Immunity toggles, Audio Warning toggle, and "Trigger Test Proc Alert" button.
+- **Slash Command Integration**:
+  - Updated `/ol`, `/onelock`, `/olshards`, and `/olprocs` with no arguments to toggle the standalone options panel directly.
+
 ### Spin 0.1.1 (Engine API Alignment & Zero-Dependency Decoupling)
 - **Decoupled OnePanel & MovableFrames**: Removed all references, hooks, and `.toc` optional dependencies on `OnePanel`, `OnePanelUtils`, and `MovableFrames`.
 - **Integrated OneSwatter**: Added direct diagnostic logging across all modules to `OneSwatter:Log`.

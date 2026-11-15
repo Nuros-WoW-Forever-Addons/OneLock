@@ -56,7 +56,11 @@ local function HandleSlashCommand(msg)
     local cmd, arg = msg:match("^(%S+)%s*(.-)$")
     cmd = cmd and cmd:lower() or ""
 
-    if cmd == "test" then
+    if cmd == "" or cmd == "options" or cmd == "config" or cmd == "gui" then
+        if _G.OneLock_Timers and _G.OneLock_Timers.ToggleOptionsUI then
+            _G.OneLock_Timers.ToggleOptionsUI()
+        end
+    elseif cmd == "test" then
         if ns.Alerts and ns.Alerts.TriggerTestAlert then
             ns.Alerts:TriggerTestAlert()
             ns:Print("Triggered test proc alert.")
