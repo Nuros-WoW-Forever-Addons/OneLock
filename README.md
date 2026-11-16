@@ -60,6 +60,9 @@ OneLock includes a full graphical configuration panel available in two modes:
 - `/ol max <1 - 10>` — Set the maximum number of targets tracked simultaneously (e.g., `/ol max 4`).
 
 ### `OneLock_Shards` (`/olshards`)
+- `/olshards move` — Toggle purple edit-mode anchor box to reposition Soulstone HUD.
+- `/olshards test` — Toggle simulated Soulstone countdown bar preview.
+- `/olshards reset` — Reset Soulstone HUD position to default.
 - `/olshards count` — Print current soul shard inventory count.
 - `/olshards cap <1-32>` — Configure maximum soul shard retention cap (default: 24).
 - `/olshards autodelete` — Toggle automatic out-of-combat deletion of excess shards.

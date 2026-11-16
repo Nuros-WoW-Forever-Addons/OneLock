@@ -242,7 +242,7 @@ function Alerts:ResetAnchorPosition()
 end
 
 local fadeTimer = 0
-local function ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoundId)
+function Alerts:ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoundId)
     local banner = Alerts.banner
     if not banner then return end
 
@@ -260,7 +260,7 @@ local function ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoun
 
     banner:SetAlpha(1.0)
     banner:Show()
-    fadeTimer = 2.5
+    fadeTimer = 3.0
 
     if ns.db and ns.db.playAudio then
         local soundToPlay = ns.db.soundId
@@ -271,6 +271,10 @@ local function ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoun
             pcall(PlaySound, soundToPlay)
         end
     end
+end
+
+local function ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoundId)
+    Alerts:ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoundId)
 end
 
 -------------------------------------------------------------------------------

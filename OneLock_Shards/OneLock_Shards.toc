@@ -2,7 +2,7 @@
 ## Title: OneLock: Shards
 ## Notes: Soul Shard inventory management and Soulstone duration tracking for Warlocks on WoW Forever.
 ## Author: Nuros
-## Version: 0.1.0
+## Version: 0.1.1
 ## SavedVariables: OneLockShardsDB
 ## OptionalDeps: OneSwatter
 

@@ -174,6 +174,20 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.10 (Soulstone Movable Anchor, Test Bar, & Event Alert Banners)
+- **Soulstone Movable Anchor & Edit Mode**:
+  - Implemented `OneLockSoulstoneAnchor` and translucent purple edit-mode shadow box (`OneLockSoulstoneShadowBox`) labeled `Soulstone (Drag to Move)`.
+  - Added direct dragging support on the Soulstone HUD frame when unlocked, with instant click-through transparency when locked.
+  - Added options controls in Section 2: `[Move Soulstone HUD (Edit)]` / `[Lock Soulstone HUD]`, `[Reset Position]`, and `[Toggle Test Bar]`.
+  - Added steppers for **Soulstone Bar Width** (120 - 300 px) and **Scale** (0.8x - 2.0x).
+- **Simulated Soulstone Test Mode (`/olshards test`)**:
+  - Toggles a simulated active Soulstone on player/MainTank with 25 minutes remaining, allowing players without the spell to visualize and position the HUD bar anywhere on screen.
+- **Soulstone Proc Alert Banners**:
+  - **Target Dead Alert**: When the soulstoned player dies (`status == "DEAD"`), triggers high-visibility red alert banner `SOULSTONE TARGET DEAD!`, turns the bar crimson, and plays Raid Warning sound. Resets when target resurrects.
+  - **Pandemic Expiring Alert (< 1 min)**: When remaining duration drops below 60 seconds, shifts bar color to golden amber with glowing spark and triggers `SOULSTONE EXPIRING SOON!` banner.
+  - **Expiration Alert**: When the 30-minute stone expires, triggers `SOULSTONE EXPIRED` alert banner.
+  - Integrated directly with `OneLock_Procs`'s custom alert banner via `Alerts:ShowAlert`.
+
 ### Spin 0.1.9 (Combat Spellcast Engine & Aura Pruning Isolation)
 - **Direct Player Spellcast Tracking (`UNIT_SPELLCAST_SUCCEEDED`)**:
   - Addressed Midnight / Camelot combat engine behavior where enemy auras are gated behind secret flags for tainted AddOns during combat.

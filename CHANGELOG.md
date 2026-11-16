@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.9] - 2026-11-15
+
+### Added
+- **Soulstone Movable Anchor & Edit Mode (`OneLock_Shards`)**:
+  - Implemented `OneLockSoulstoneAnchor` and translucent purple edit-mode shadow box (`OneLockSoulstoneShadowBox`) labeled `Soulstone (Drag to Move)`.
+  - Added direct dragging support on the Soulstone HUD frame when unlocked.
+  - Added options controls: `[Move Soulstone HUD (Edit)]`, `[Reset Position]`, and steppers for Bar Width (120 - 300 px) and Scale (0.8x - 2.0x).
+- **Simulated Soulstone Test Mode (`/olshards test`)**:
+  - Added test mode to preview and position the Soulstone HUD bar without needing the spell trained.
+- **Soulstone Proc Alert Banners**:
+  - **Target Dead Alert**: High-visibility red alert banner `SOULSTONE TARGET DEAD!`, turns the bar crimson, and plays Raid Warning sound when the soulstoned player dies.
+  - **Pandemic Expiring Alert (< 1 min)**: Golden amber alert banner and color shift with glowing spark when remaining time drops below 60s.
+  - **Expiration Alert**: Notifies when the 30-minute stone expires.
+  - Routed through `OneLock_Procs`'s custom alert banner engine.
+
+---
+
 ## [0.1.8] - 2026-11-15
 
 ### Added

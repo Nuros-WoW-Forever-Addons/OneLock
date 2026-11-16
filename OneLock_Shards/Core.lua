@@ -7,14 +7,18 @@ local addonName, ns = ...
 _G.OneLock_Shards = ns
 
 ns.addonName = addonName
-ns.version = "0.1.0"
+ns.version = "0.1.1"
 
 local defaultDB = {
-    version = 1,
+    version = 2,
     maxShards = 24,
     autoDeleteExcess = false,
     showSoulstoneBar = true,
-    soulstoneAnchor = {
+    enableSoulstoneAlerts = true,
+    locked = false,                     -- Movable by default
+    soulstoneWidth = 180,
+    soulstoneScale = 1.0,
+    position = {
         point = "BOTTOMLEFT",
         relativePoint = "BOTTOMLEFT",
         x = 250,
@@ -91,8 +95,26 @@ local function HandleSlashCommand(msg)
         if ns.ShardManager and ns.ShardManager.CleanupExcessShards then
             ns.ShardManager:CleanupExcessShards()
         end
+    elseif cmd == "move" or cmd == "lock" or cmd == "unlock" then
+        if ns.SoulstoneTracker and ns.SoulstoneTracker.ToggleLock then
+            local isLocked = ns.SoulstoneTracker:ToggleLock()
+            ns:Print("Soulstone HUD " .. (isLocked and "|cffff4444LOCKED (Hidden)|r." or "|cff44ff44UNLOCKED (Move Purple Box)|r."))
+        end
+    elseif cmd == "reset" then
+        if ns.SoulstoneTracker and ns.SoulstoneTracker.ResetPosition then
+            ns.SoulstoneTracker:ResetPosition()
+            ns:Print("Reset Soulstone HUD position to default.")
+        end
+    elseif cmd == "test" then
+        if ns.SoulstoneTracker and ns.SoulstoneTracker.ToggleTestMode then
+            local active = ns.SoulstoneTracker:ToggleTestMode()
+            ns:Print("Simulated Soulstone bar " .. (active and "|cff44ff44ENABLED|r." or "|cffff4444DISABLED|r."))
+        end
     else
         ns:Print("OneLock Shards commands:")
+        print("  |cffffd100/olshards move|r — Toggle purple edit-mode box to position Soulstone HUD")
+        print("  |cffffd100/olshards test|r — Toggle simulated Soulstone bar preview")
+        print("  |cffffd100/olshards reset|r — Reset Soulstone HUD position")
         print("  |cffffd100/olshards count|r — Print current soul shard count")
         print("  |cffffd100/olshards cap <1-32>|r — Set soul shard inventory cap")
         print("  |cffffd100/olshards autodelete|r — Toggle out-of-combat auto deletion")

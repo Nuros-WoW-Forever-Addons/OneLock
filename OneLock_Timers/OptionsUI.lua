@@ -400,6 +400,88 @@ local function PopulateControls(content, isStandalone)
     -- ========================================================================
     AddSectionHeader("|cff9966ffOneLock: Shards (Inventory & Soulstone)|r")
 
+    -- Buttons: Move Soulstone HUD (Edit) / Reset Position / Toggle Test Bar
+    local btnMoveSS = CreateButton(content, (_G.OneLockShardsDB and _G.OneLockShardsDB.locked == false) and "Lock Soulstone HUD" or "Move Soulstone (Edit)", 160, 24, function(self)
+        if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ToggleLock then
+            local isLocked = _G.OneLock_Shards.SoulstoneTracker:ToggleLock()
+            self:SetText(isLocked and "Move Soulstone (Edit)" or "Lock Soulstone HUD")
+        end
+    end)
+    btnMoveSS:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+
+    btnMoveSS.Refresh = function(self)
+        local isUnlocked = (_G.OneLockShardsDB and _G.OneLockShardsDB.locked == false)
+        self:SetText(isUnlocked and "Lock Soulstone HUD" or "Move Soulstone (Edit)")
+    end
+    table.insert(refreshables, btnMoveSS)
+
+    local btnResetSS = CreateButton(content, "Reset Position", 110, 24, function()
+        if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ResetPosition then
+            _G.OneLock_Shards.SoulstoneTracker:ResetPosition()
+        end
+    end)
+    btnResetSS:SetPoint("LEFT", btnMoveSS, "RIGHT", 8, 0)
+
+    local btnTestSS = CreateButton(content, "Toggle Test Bar", 120, 24, function()
+        if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ToggleTestMode then
+            local active = _G.OneLock_Shards.SoulstoneTracker:ToggleTestMode()
+            ns:Print("Simulated Soulstone bar " .. (active and "|cff44ff44ENABLED|r." or "|cffff4444DISABLED|r."))
+        end
+    end)
+    btnTestSS:SetPoint("LEFT", btnResetSS, "RIGHT", 8, 0)
+    curY = curY - 34
+
+    -- Steppers: Soulstone Bar Width & Scale
+    local stepSSWidth = CreateStepper(content, "Soulstone Bar Width:", 120, 300, 10,
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.soulstoneWidth) or 180 end,
+        function(v)
+            if _G.OneLockShardsDB then _G.OneLockShardsDB.soulstoneWidth = v end
+            if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ApplySettings then
+                _G.OneLock_Shards.SoulstoneTracker:ApplySettings()
+            end
+        end,
+        "%d px",
+        nil
+    )
+    stepSSWidth:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepSSWidth)
+    curY = curY - 30
+
+    local stepSSScale = CreateStepper(content, "Soulstone Bar Scale:", 0.8, 2.0, 0.05,
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.soulstoneScale) or 1.0 end,
+        function(v)
+            if _G.OneLockShardsDB then _G.OneLockShardsDB.soulstoneScale = v end
+            if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ApplySettings then
+                _G.OneLock_Shards.SoulstoneTracker:ApplySettings()
+            end
+        end,
+        "%.2fx",
+        nil
+    )
+    stepSSScale:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepSSScale)
+    curY = curY - 32
+
+    -- Checkboxes: Show Soulstone Bar & Enable Soulstone Alerts
+    local cbShowSS = CreateCheckbox(content, "Display 30-Minute Soulstone Countdown Bar",
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.showSoulstoneBar ~= false) end,
+        function(v) if _G.OneLockShardsDB then _G.OneLockShardsDB.showSoulstoneBar = v end end,
+        nil
+    )
+    cbShowSS:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbShowSS)
+    curY = curY - 26
+
+    local cbSSAlerts = CreateCheckbox(content, "Enable Soulstone Alerts (Target Death, < 1m Warning, Expiry)",
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.enableSoulstoneAlerts ~= false) end,
+        function(v) if _G.OneLockShardsDB then _G.OneLockShardsDB.enableSoulstoneAlerts = v end end,
+        nil
+    )
+    cbSSAlerts:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbSSAlerts)
+    curY = curY - 32
+
+    -- Soul Shard Inventory Cap & Auto Delete
     local stepShards = CreateStepper(content, "Max Soul Shards Cap:", 1, 32, 1,
         function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.maxShards) or (_G.OneLock_Shards and _G.OneLock_Shards.db and _G.OneLock_Shards.db.maxShards) or 24 end,
         function(v)
