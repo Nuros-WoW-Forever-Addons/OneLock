@@ -66,6 +66,8 @@ OneLock includes a full graphical configuration panel available in two modes:
 - `/olshards cleanup` — Immediately delete shards above cap out of combat.
 
 ### `OneLock_Procs` (`/olprocs`)
+- `/olprocs move` — Toggle purple edit-mode anchor box to reposition the alert banner.
+- `/olprocs reset` — Reset alert banner position to default screen center.
 - `/olprocs test` — Trigger a test proc alert banner on screen.
 - `/olprocs sound` — Toggle proc audio alert sound effects.
 - `/olprocs nightfall` — Toggle Shadow Trance alerts.

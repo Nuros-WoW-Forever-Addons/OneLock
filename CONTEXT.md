@@ -134,12 +134,22 @@ OneLockShardsDB = {
 ### `OneLockProcsDB`
 ```lua
 OneLockProcsDB = {
-    version = 1,
+    version = 2,
+    locked = true,                     -- Anchor movement lock (edit mode hidden by default)
     enableNightfall = true,            -- Shadow Trance alert
     enableBacklash = true,             -- Backlash alert
     enableImmunityAlert = true,        -- Fear/Banish target immunity alert
     playAudio = true,                  -- Sound alert trigger
-    alertScale = 1.2,                  -- Visual banner scale
+    alertWidth = 240,                  -- Visual banner width (160 - 360 px)
+    alertScale = 1.2,                  -- Visual banner scale (0.8 - 2.0x)
+    soundIndex = 1,                    -- Index into sound options profile
+    soundId = 8959,                    -- Selected SoundKit ID (Alarm Clock default, 0 for mute)
+    position = {
+        point = "CENTER",
+        relativePoint = "CENTER",
+        x = 0,
+        y = 180,
+    },
 }
 ```
 
@@ -163,6 +173,19 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.1.6 (Movable/Sizable Proc Alert Banner & Sound Selection)
+- **Clarified Alert Banner Architecture**:
+  - Confirmed the proc alert banner (`OneLockProcAlertBanner`) is an addon-built custom frame in `OneLock_Procs/Alerts.lua`, not a Blizzard native alert frame.
+- **Movable & Sizable Proc Alert Banner**:
+  - Implemented `OneLockProcAnchor` and attached an edit-mode translucent purple shadow box (`OneLockProcShadowBox`) matching the aesthetic of `OneLockTimersShadowBox` (`0.20, 0.08, 0.35, 0.65` purple backdrop + `0.75, 0.35, 1.00, 0.95` violet border).
+  - Added `[Move Alert Banner (Edit)]` / `[Lock Alert Banner]` toggle button and `[Reset Alert Position]` button in the Options Panel.
+  - Added steppers for **Alert Banner Width** (160 - 360 px, step 10) and **Alert Banner Scale** (0.8 - 2.0x, step 0.05).
+  - Saved coordinates and dimensions persisted in `OneLockProcsDB` (`position`, `alertWidth`, `alertScale`).
+- **Configurable Proc Sound Effects & Live Preview**:
+  - Added sound profile system (`SOUND_OPTIONS`) offering 10 audio options: Alarm Clock (Default), Raid Warning, Ready Check, Auction Bell / Chime, Sonar / Map Ping, Whisper / Shimmer, Gong / Quest Complete, Level Up, PvP Flag Captured, and None (Mute).
+  - Integrated `CreateSoundSelector` in OptionsUI with `<` and `>` cycling controls and a dedicated `[Test Sound]` preview button.
+  - Linked sound selection directly to proc alert triggers in `Alerts.lua` with full mute support.
 
 ### Spin 0.1.5 (Purple Shadow Box Edit Mode & Header Bar Removal)
 - **Removed Static "Drag to Move" Header Bar**:

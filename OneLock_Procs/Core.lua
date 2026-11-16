@@ -7,15 +7,25 @@ local addonName, ns = ...
 _G.OneLock_Procs = ns
 
 ns.addonName = addonName
-ns.version = "0.1.0"
+ns.version = "0.1.1"
 
 local defaultDB = {
-    version = 1,
+    version = 2,
+    locked = true,                      -- Default locked (shadow box hidden until edit mode)
     enableNightfall = true,
     enableBacklash = true,
     enableImmunityAlert = true,
     playAudio = true,
-    alertScale = 1.2,
+    alertWidth = 240,                   -- Banner width (160 - 360)
+    alertScale = 1.2,                   -- Frame scale (0.8 - 2.0)
+    soundIndex = 1,                     -- Index into SOUND_OPTIONS
+    soundId = 8959,                     -- SoundKit ID (Alarm Clock Warning 3)
+    position = {
+        point = "CENTER",
+        relativePoint = "CENTER",
+        x = 0,
+        y = 180,
+    },
 }
 
 function ns:Print(msg)
@@ -66,6 +76,16 @@ local function HandleSlashCommand(msg)
             ns:Print("Triggered test proc alert.")
             ns:Log("DEBUG", "Commands", "Triggered test alert.")
         end
+    elseif cmd == "lock" or cmd == "unlock" or cmd == "move" then
+        if ns.Alerts and ns.Alerts.ToggleLock then
+            local isLocked = ns.Alerts:ToggleLock()
+            ns:Print("Alert banner " .. (isLocked and "|cffff4444LOCKED (Hidden)|r." or "|cff44ff44UNLOCKED (Move Purple Box)|r."))
+        end
+    elseif cmd == "reset" then
+        if ns.Alerts and ns.Alerts.ResetAnchorPosition then
+            ns.Alerts:ResetAnchorPosition()
+            ns:Print("Reset proc alert banner position to center.")
+        end
     elseif cmd == "sound" then
         ns.db.playAudio = not ns.db.playAudio
         if ns.db.playAudio then
@@ -88,6 +108,8 @@ local function HandleSlashCommand(msg)
         ns:Log("INFO", "Settings", "Immunity alerts toggled: " .. tostring(ns.db.enableImmunityAlert))
     else
         ns:Print("OneLock Procs commands:")
+        print("  |cffffd100/olprocs move|r — Toggle purple edit-mode anchor box to move banner")
+        print("  |cffffd100/olprocs reset|r — Reset banner position to screen center")
         print("  |cffffd100/olprocs test|r — Trigger a test proc alert banner")
         print("  |cffffd100/olprocs sound|r — Toggle alert sound effects")
         print("  |cffffd100/olprocs nightfall|r — Toggle Shadow Trance alerts")

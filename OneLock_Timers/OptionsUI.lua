@@ -179,6 +179,61 @@ local function CreateColorSwatch(parent, labelText, getter, setter, onChange)
     return container
 end
 
+local function CreateSoundSelector(parent, labelText, getSoundList, getIndex, setIndex, onTest)
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetSize(460, 26)
+
+    local label = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    label:SetPoint("LEFT", container, "LEFT", 0, 0)
+    label:SetText(labelText)
+
+    local btnPrev = CreateButton(container, "<", 24, 22, nil)
+    btnPrev:SetPoint("LEFT", container, "LEFT", 145, 0)
+
+    local valText = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    valText:SetPoint("LEFT", btnPrev, "RIGHT", 4, 0)
+    valText:SetWidth(170)
+    valText:SetJustifyH("CENTER")
+
+    local btnNext = CreateButton(container, ">", 24, 22, nil)
+    btnNext:SetPoint("LEFT", valText, "RIGHT", 4, 0)
+
+    local btnTest = CreateButton(container, "Test Sound", 80, 22, function()
+        if onTest then onTest() end
+    end)
+    btnTest:SetPoint("LEFT", btnNext, "RIGHT", 8, 0)
+
+    local function UpdateIndex(newIdx)
+        local list = getSoundList and getSoundList() or {}
+        local count = #list
+        if count == 0 then return end
+        if newIdx < 1 then newIdx = count end
+        if newIdx > count then newIdx = 1 end
+        setIndex(newIdx)
+        local item = list[newIdx]
+        valText:SetText("|cffffd100" .. (item and item.name or "Unknown") .. "|r")
+    end
+
+    btnPrev:SetScript("OnClick", function()
+        UpdateIndex(getIndex() - 1)
+    end)
+
+    btnNext:SetScript("OnClick", function()
+        UpdateIndex(getIndex() + 1)
+    end)
+
+    container.Refresh = function()
+        local list = getSoundList and getSoundList() or {}
+        local idx = getIndex()
+        local item = list[idx]
+        valText:SetText("|cffffd100" .. (item and item.name or "Default") .. "|r")
+    end
+    container:SetScript("OnShow", container.Refresh)
+    container.Refresh()
+
+    return container
+end
+
 -------------------------------------------------------------------------------
 -- Populate Controls on a Dedicated Content Container Frame
 -------------------------------------------------------------------------------
@@ -380,6 +435,60 @@ local function PopulateControls(content, isStandalone)
     -- ========================================================================
     AddSectionHeader("|cff9966ffOneLock: Procs (Alerts & Immunities)|r")
 
+    -- Move Alert Banner (Edit) / Reset Alert Position
+    local btnMoveProc = CreateButton(content, (_G.OneLockProcsDB and not _G.OneLockProcsDB.locked) and "Lock Alert Banner" or "Move Alert Banner (Edit)", 170, 24, function(self)
+        if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.ToggleLock then
+            local isLocked = _G.OneLock_Procs.Alerts:ToggleLock()
+            self:SetText(isLocked and "Move Alert Banner (Edit)" or "Lock Alert Banner")
+        end
+    end)
+    btnMoveProc:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+
+    btnMoveProc.Refresh = function(self)
+        local isUnlocked = (_G.OneLockProcsDB and _G.OneLockProcsDB.locked == false)
+        self:SetText(isUnlocked and "Lock Alert Banner" or "Move Alert Banner (Edit)")
+    end
+    table.insert(refreshables, btnMoveProc)
+
+    local btnResetProc = CreateButton(content, "Reset Alert Position", 140, 24, function()
+        if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.ResetAnchorPosition then
+            _G.OneLock_Procs.Alerts:ResetAnchorPosition()
+        end
+    end)
+    btnResetProc:SetPoint("LEFT", btnMoveProc, "RIGHT", 10, 0)
+    curY = curY - 34
+
+    -- Steppers: Alert Banner Width & Scale
+    local stepAlertWidth = CreateStepper(content, "Alert Banner Width:", 160, 360, 10,
+        function() return (_G.OneLockProcsDB and _G.OneLockProcsDB.alertWidth) or 240 end,
+        function(v)
+            if _G.OneLockProcsDB then _G.OneLockProcsDB.alertWidth = v end
+            if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.ApplyAlertSettings then
+                _G.OneLock_Procs.Alerts:ApplyAlertSettings()
+            end
+        end,
+        "%d px",
+        nil
+    )
+    stepAlertWidth:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepAlertWidth)
+    curY = curY - 30
+
+    local stepAlertScale = CreateStepper(content, "Alert Banner Scale:", 0.8, 2.0, 0.05,
+        function() return (_G.OneLockProcsDB and _G.OneLockProcsDB.alertScale) or 1.2 end,
+        function(v)
+            if _G.OneLockProcsDB then _G.OneLockProcsDB.alertScale = v end
+            if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.ApplyAlertSettings then
+                _G.OneLock_Procs.Alerts:ApplyAlertSettings()
+            end
+        end,
+        "%.2fx",
+        nil
+    )
+    stepAlertScale:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepAlertScale)
+    curY = curY - 32
+
     local cbNightfall = CreateCheckbox(content, "Enable Shadow Trance (Nightfall) Alerts",
         function() return _G.OneLockProcsDB and _G.OneLockProcsDB.enableNightfall end,
         function(v) if _G.OneLockProcsDB then _G.OneLockProcsDB.enableNightfall = v end end,
@@ -415,6 +524,35 @@ local function PopulateControls(content, isStandalone)
     cbAudio:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     table.insert(refreshables, cbAudio)
     curY = curY - 30
+
+    -- Sound Selector: Prev / Next / Test Sound
+    local soundSel = CreateSoundSelector(content, "Alert Sound Effect:",
+        function()
+            if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.GetSoundList then
+                return _G.OneLock_Procs.Alerts:GetSoundList()
+            end
+            return {}
+        end,
+        function()
+            if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.GetCurrentSoundIndex then
+                return _G.OneLock_Procs.Alerts:GetCurrentSoundIndex()
+            end
+            return 1
+        end,
+        function(idx)
+            if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.SetSoundByIndex then
+                _G.OneLock_Procs.Alerts:SetSoundByIndex(idx)
+            end
+        end,
+        function()
+            if _G.OneLock_Procs and _G.OneLock_Procs.Alerts and _G.OneLock_Procs.Alerts.PlayCurrentSound then
+                _G.OneLock_Procs.Alerts:PlayCurrentSound()
+            end
+        end
+    )
+    soundSel:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, soundSel)
+    curY = curY - 34
 
     local btnTestProc = CreateButton(content, "Trigger Test Proc Alert Banner", 220, 24, function()
         if _G.OneLock_Procs and _G.OneLock_Procs.Alerts then

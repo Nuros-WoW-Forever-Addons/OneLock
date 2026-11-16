@@ -43,14 +43,117 @@ local function GetSpellDetails(spellID)
 end
 
 -------------------------------------------------------------------------------
--- Alert Banner UI
+-- Sound Effect Profiles
+-------------------------------------------------------------------------------
+local SOUND_OPTIONS = {
+    { name = "Alarm Clock (Default)", id = 8959 },
+    { name = "Raid Warning", id = 8960 },
+    { name = "Ready Check", id = 8961 },
+    { name = "Auction Bell / Chime", id = 866 },
+    { name = "Sonar / Map Ping", id = 3175 },
+    { name = "Whisper / Shimmer", id = 843 },
+    { name = "Gong / Quest Completed", id = 618 },
+    { name = "Level Up", id = 888 },
+    { name = "PvP Flag Captured", id = 8174 },
+    { name = "None (Mute)", id = 0 },
+}
+Alerts.SOUND_OPTIONS = SOUND_OPTIONS
+
+function Alerts:GetSoundList()
+    return SOUND_OPTIONS
+end
+
+function Alerts:GetCurrentSoundIndex()
+    local idx = ns.db and ns.db.soundIndex or 1
+    if idx < 1 or idx > #SOUND_OPTIONS then
+        idx = 1
+    end
+    return idx
+end
+
+function Alerts:SetSoundByIndex(idx)
+    if not ns.db then return end
+    if idx < 1 then idx = #SOUND_OPTIONS end
+    if idx > #SOUND_OPTIONS then idx = 1 end
+    ns.db.soundIndex = idx
+    ns.db.soundId = SOUND_OPTIONS[idx].id
+end
+
+function Alerts:PlayCurrentSound()
+    local soundId = (ns.db and ns.db.soundId ~= nil) and ns.db.soundId or 8959
+    if soundId and soundId > 0 then
+        pcall(PlaySound, soundId)
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Alert Banner UI & Movable Purple Shadow Box Anchor
 -------------------------------------------------------------------------------
 local function CreateAlertBanner()
-    local banner = CreateFrame("Frame", "OneLockProcAlertBanner", UIParent, "BackdropTemplate")
-    banner:SetSize(240, 48)
-    banner:SetPoint("CENTER", UIParent, "CENTER", 0, 180)
-    banner:SetScale((ns.db and ns.db.alertScale) or 1.2)
-    banner:SetClampedToScreen(true)
+    local db = ns.db or {}
+    local anchor = CreateFrame("Frame", "OneLockProcAnchor", UIParent)
+    anchor:SetSize(db.alertWidth or 240, 48)
+    anchor:SetScale(db.alertScale or 1.2)
+    anchor:SetClampedToScreen(true)
+    anchor:SetMovable(true)
+
+    local pos = db.position or { point = "CENTER", relativePoint = "CENTER", x = 0, y = 180 }
+    anchor:ClearAllPoints()
+    anchor:SetPoint(pos.point or "CENTER", UIParent, pos.relativePoint or "CENTER", pos.x or 0, pos.y or 180)
+
+    -- Edit Mode Purple Shadow Box
+    local shadowBox = CreateFrame("Frame", "OneLockProcShadowBox", anchor, "BackdropTemplate")
+    shadowBox:SetPoint("CENTER", anchor, "CENTER", 0, 0)
+    shadowBox:SetSize(db.alertWidth or 240, 48)
+    shadowBox:SetFrameStrata("HIGH")
+
+    shadowBox:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    shadowBox:SetBackdropColor(0.20, 0.08, 0.35, 0.65) -- Translucent deep purple shadow
+    shadowBox:SetBackdropBorderColor(0.75, 0.35, 1.00, 0.95) -- Glowing violet border
+
+    local shadowIcon = shadowBox:CreateTexture(nil, "ARTWORK")
+    shadowIcon:SetSize(36, 36)
+    shadowIcon:SetPoint("LEFT", shadowBox, "LEFT", 6, 0)
+    shadowIcon:SetTexture("Interface\\Icons\\Spell_Shadow_Twilight")
+    shadowIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    local shadowTitle = shadowBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    shadowTitle:SetPoint("TOPLEFT", shadowIcon, "TOPRIGHT", 8, -4)
+    shadowTitle:SetText("|cffdd99ffOneLock Proc Alert|r")
+
+    local shadowHint = shadowBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    shadowHint:SetPoint("BOTTOMLEFT", shadowIcon, "BOTTOMRIGHT", 8, 4)
+    shadowHint:SetText("|cffa8a8a8(Drag to Move)|r")
+
+    shadowBox:EnableMouse(true)
+    shadowBox:RegisterForDrag("LeftButton")
+
+    shadowBox:SetScript("OnDragStart", function(self)
+        anchor:StartMoving()
+    end)
+
+    shadowBox:SetScript("OnDragStop", function(self)
+        anchor:StopMovingOrSizing()
+        local point, _, relPoint, x, y = anchor:GetPoint()
+        if ns.db and ns.db.position then
+            ns.db.position.point = point
+            ns.db.position.relativePoint = relPoint
+            ns.db.position.x = x
+            ns.db.position.y = y
+        end
+    end)
+
+    anchor.shadowBox = shadowBox
+
+    -- Active Proc Alert Banner (shown only on procs / alerts)
+    local banner = CreateFrame("Frame", "OneLockProcAlertBanner", anchor, "BackdropTemplate")
+    banner:SetPoint("CENTER", anchor, "CENTER", 0, 0)
+    banner:SetSize(db.alertWidth or 240, 48)
 
     banner:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -80,11 +183,66 @@ local function CreateAlertBanner()
     banner.subtext = subtext
 
     banner:Hide()
+    Alerts.anchor = anchor
     Alerts.banner = banner
+    Alerts:UpdateAnchorState()
+end
+
+function Alerts:ApplyAlertSettings()
+    local anchor = self.anchor
+    if not anchor then return end
+    local db = ns.db or {}
+    local width = db.alertWidth or 240
+    local scale = db.alertScale or 1.2
+
+    anchor:SetSize(width, 48)
+    anchor:SetScale(scale)
+
+    if anchor.shadowBox then
+        anchor.shadowBox:SetSize(width, 48)
+    end
+    if self.banner then
+        self.banner:SetSize(width, 48)
+    end
+end
+
+function Alerts:UpdateAnchorState()
+    local anchor = self.anchor
+    if not anchor or not anchor.shadowBox then return end
+
+    if ns.db and ns.db.locked then
+        anchor.shadowBox:Hide()
+    else
+        self:ApplyAlertSettings()
+        anchor.shadowBox:Show()
+    end
+end
+
+function Alerts:ToggleLock()
+    if not ns.db then return true end
+    ns.db.locked = not ns.db.locked
+    self:UpdateAnchorState()
+    return ns.db.locked
+end
+
+function Alerts:IsLocked()
+    return (ns.db and ns.db.locked) ~= false
+end
+
+function Alerts:ResetAnchorPosition()
+    if not self.anchor then return end
+    self.anchor:ClearAllPoints()
+    self.anchor:SetPoint("CENTER", UIParent, "CENTER", 0, 180)
+    if ns.db and ns.db.position then
+        ns.db.position.point = "CENTER"
+        ns.db.position.relativePoint = "CENTER"
+        ns.db.position.x = 0
+        ns.db.position.y = 180
+    end
 end
 
 local fadeTimer = 0
-local function ShowAlert(titleText, subText, iconPath, borderColor, soundId)
+local function ShowAlert(titleText, subText, iconPath, borderColor, fallbackSoundId)
     local banner = Alerts.banner
     if not banner then return end
 
@@ -104,8 +262,14 @@ local function ShowAlert(titleText, subText, iconPath, borderColor, soundId)
     banner:Show()
     fadeTimer = 2.5
 
-    if ns.db and ns.db.playAudio and soundId then
-        pcall(PlaySound, soundId)
+    if ns.db and ns.db.playAudio then
+        local soundToPlay = ns.db.soundId
+        if soundToPlay == nil then
+            soundToPlay = fallbackSoundId or 8959
+        end
+        if soundToPlay and soundToPlay > 0 then
+            pcall(PlaySound, soundToPlay)
+        end
     end
 end
 

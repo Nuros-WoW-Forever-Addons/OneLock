@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.5] - 2026-11-15
+
+### Added
+- **Movable & Sizable Proc Alert Banner (`OneLock_Procs`)**:
+  - Confirmed the proc banner is a custom frame built specifically for OneLock (`OneLockProcAlertBanner`), allowing full layout and styling control.
+  - Implemented `OneLockProcAnchor` with a translucent purple shadow box edit-mode preview (`OneLockProcShadowBox`), toggled from the Options Panel via `[Move Alert Banner (Edit)]`.
+  - Added steppers in the Options Panel to customize Alert Banner Width (160 - 360 px) and Scale (0.8 - 2.0x).
+  - Added `[Reset Alert Position]` button to quickly return the banner to default screen coordinates.
+- **Configurable Proc Sound Effects & Live Preview**:
+  - Implemented a 10-preset sound library (`SOUND_OPTIONS`) including Alarm Clock (Default), Raid Warning, Ready Check, Auction Bell / Chime, Sonar / Map Ping, Whisper / Shimmer, Gong / Quest Complete, Level Up, PvP Flag Captured, and None (Mute).
+  - Added an interactive sound selector control in the Options Panel with previous/next cycling and a dedicated `[Test Sound]` button to preview sounds instantly.
+  - Linked sound choices directly to proc triggers in `Alerts.lua` with full mute support.
+
+---
+
 ## [0.1.4] - 2026-11-15
 
 ### Changed
