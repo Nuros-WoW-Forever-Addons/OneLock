@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.7] - 2026-11-15
+
+### Changed
+- **Movable by Default (Controlled Entirely by OneLock)**:
+  - Updated default configuration to `locked = false` so anchors display their purple edit-mode boxes immediately on fresh load/reset.
+  - Added direct dragging support to active target headers (`RegisterForDrag("LeftButton")`), allowing players to reposition the timer stack by grabbing either the header or the purple shadow box.
+  - When locked, mouse interaction on headers is disabled (`EnableMouse(false)`), making them transparent to mouse clicks during combat.
+- **Purged OneLock from MovableFrames**:
+  - Automatically unmanaged and deleted all residual `OneLock*` custom frames from `MovableFramesDB.customFrames` and `MovableFramesDB.positions`.
+  - Added exclusion filter in `MovableFrames` preventing it from hooking or managing OneLock suite elements.
+
+---
+
 ## [0.1.6] - 2026-11-15
 
 ### Fixed

@@ -11,7 +11,7 @@ ns.version = "0.1.1"
 
 local defaultDB = {
     version = 2,
-    locked = true,                      -- Default locked (shadow box hidden until edit mode)
+    locked = false,                     -- Movable by default (controlled entirely by OneLock suite)
     enableNightfall = true,
     enableBacklash = true,
     enableImmunityAlert = true,

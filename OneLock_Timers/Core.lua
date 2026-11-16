@@ -12,7 +12,7 @@ ns.version = "0.1.0"
 -- Database Defaults
 local defaultDB = {
     version = 2,
-    locked = true, -- Default locked (hidden until target with DoTs exists)
+    locked = false, -- Movable by default (controlled entirely by OneLock suite)
     barWidth = 160,
     barHeight = 16,
     barScale = 1.0,
@@ -173,6 +173,32 @@ local function HandleSlashCommand(msg)
 end
 
 -------------------------------------------------------------------------------
+-- MovableFrames Isolation & Purge
+-- Guarantees OneLock elements are never managed or captured by MovableFrames
+-------------------------------------------------------------------------------
+local function PurgeFromMovableFrames()
+    if _G.MovableFrames and _G.MovableFrames.UnmanageCustomFrame then
+        pcall(_G.MovableFrames.UnmanageCustomFrame, _G.MovableFrames, "OneLockTimersAnchor")
+        pcall(_G.MovableFrames.UnmanageCustomFrame, _G.MovableFrames, "OneLockTimersShadowBox")
+        pcall(_G.MovableFrames.UnmanageCustomFrame, _G.MovableFrames, "OneLockProcAnchor")
+        pcall(_G.MovableFrames.UnmanageCustomFrame, _G.MovableFrames, "OneLockProcShadowBox")
+        pcall(_G.MovableFrames.UnmanageCustomFrame, _G.MovableFrames, "OneLockProcAlertBanner")
+        pcall(_G.MovableFrames.UnmanageCustomFrame, _G.MovableFrames, "OneLockOptionsFrame")
+    end
+
+    if _G.MovableFramesDB and _G.MovableFramesDB.customFrames then
+        for k in pairs(_G.MovableFramesDB.customFrames) do
+            if type(k) == "string" and k:find("^OneLock") then
+                _G.MovableFramesDB.customFrames[k] = nil
+                if _G.MovableFramesDB.positions then
+                    _G.MovableFramesDB.positions[k] = nil
+                end
+            end
+        end
+    end
+end
+
+-------------------------------------------------------------------------------
 -- Event Dispatcher
 -------------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame", "OneLock_Timers_EventFrame")
@@ -182,6 +208,7 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
         InitDB()
+        PurgeFromMovableFrames()
         if ns.Display and ns.Display.Initialize then
             ns.Display:Initialize()
         end
@@ -190,6 +217,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         end
         ns:Log("INFO", "Core", "OneLock_Timers v" .. ns.version .. " loaded successfully.")
     elseif event == "PLAYER_LOGIN" then
+        PurgeFromMovableFrames()
         ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/ol|r for options.")
         ns:Log("INFO", "Core", "PLAYER_LOGIN initialized.")
     end

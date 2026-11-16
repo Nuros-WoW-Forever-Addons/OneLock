@@ -174,6 +174,16 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.8 (Complete MovableFrames Decoupling & Native Movable Default)
+- **Purged OneLock from MovableFrames**:
+  - Identified residual `MovableFramesDB.customFrames["OneLockTimersAnchor"]` entry written during initial v0.1.0 scaffold.
+  - Implemented automated purge in `OneLock_Timers/Core.lua` on `ADDON_LOADED` and `PLAYER_LOGIN` that unmanages and deletes all `OneLock*` keys from `MovableFramesDB.customFrames` and `MovableFramesDB.positions`.
+  - Added exclusion filter in `MovableFrames/Core.lua` and `MovableFrames/Modules/OptionsUI.lua` preventing `MovableFrames` from listing or hooking `OneLock` elements.
+- **Movable by Default (Controlled Entirely by OneLock)**:
+  - Updated default configuration to `locked = false` so that timer and proc anchors display their purple edit-mode shadow boxes immediately on fresh load/reset.
+  - Added direct dragging support to active target headers (`AcquireHeader` -> `RegisterForDrag("LeftButton")`), allowing players to drag the timer stack directly by grabbing either the header or the purple shadow box when unlocked.
+  - Clicking `[Lock Anchor]` or `/ol lock` disables header mouse events (`EnableMouse(false)`) and hides shadow boxes, making them completely transparent to clicks during combat.
+
 ### Spin 0.1.7 (Secret Aura Taint & Non-Hostile Unit Hardening)
 - **Resolved `GetDebuffDataByIndex` Secret Aura Taint Error**:
   - Addressed fatal runtime error triggered during quests with charmed or secret aura units (e.g., Deeprun Rat Roundup): `GetDebuffDataByIndex(): Auras cannot be accessed when secret while tainted by 'OneLock_Timers'`.

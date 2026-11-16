@@ -124,6 +124,10 @@ function Display:UpdateAnchorState()
         anchor.shadowBox:SetWidth(ns.db.barWidth or 160)
         anchor.shadowBox:Show()
     end
+
+    for _, header in ipairs(activeHeaders) do
+        header:EnableMouse(not ns.db.locked)
+    end
 end
 
 function Display:ResetAnchorPosition()
@@ -163,9 +167,25 @@ local function AcquireHeader()
         text:SetPoint("RIGHT", header, "RIGHT", -4, 0)
         text:SetJustifyH("LEFT")
         header.text = text
+
+        header:RegisterForDrag("LeftButton")
+        header:SetScript("OnDragStart", function(self)
+            if not ns.db.locked then
+                Display.anchor:StartMoving()
+            end
+        end)
+        header:SetScript("OnDragStop", function(self)
+            Display.anchor:StopMovingOrSizing()
+            local point, _, relPoint, x, y = Display.anchor:GetPoint()
+            ns.db.position.point = point
+            ns.db.position.relativePoint = relPoint
+            ns.db.position.x = x
+            ns.db.position.y = y
+        end)
     end
 
     header:SetWidth(ns.db.barWidth or 160)
+    header:EnableMouse(not ns.db.locked)
     header:Show()
     table.insert(activeHeaders, header)
     return header
