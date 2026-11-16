@@ -85,18 +85,28 @@ local function InitSpellCatalog()
 end
 
 -------------------------------------------------------------------------------
--- Modern C_UnitAuras Scanner
+-- Secret Value Helper (WoW Forever Interface 16001 / Midnight Safety)
+-------------------------------------------------------------------------------
+local function IsSecret(val)
+    return issecretvalue and issecretvalue(val)
+end
+
+-------------------------------------------------------------------------------
+-- Modern C_UnitAuras Scanner (Hardened against Secret Aura Taint)
 -------------------------------------------------------------------------------
 local function ForEachUnitDebuff(unit, callback)
-    if not UnitExists(unit) then return end
+    local okExists, exists = pcall(UnitExists, unit)
+    if not okExists or not exists or IsSecret(exists) then return end
 
     -- 1. Modern C_UnitAuras.GetDebuffDataByIndex
     if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
         local i = 1
         while true do
-            local aura = C_UnitAuras.GetDebuffDataByIndex(unit, i)
-            if not aura then break end
-            callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            local ok, aura = pcall(C_UnitAuras.GetDebuffDataByIndex, unit, i)
+            if not ok or not aura then break end
+            if not (IsSecret(aura.name) or IsSecret(aura.spellId)) then
+                callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            end
             i = i + 1
         end
         return
@@ -106,9 +116,11 @@ local function ForEachUnitDebuff(unit, callback)
     if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
         local i = 1
         while true do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
-            if not aura then break end
-            callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HARMFUL")
+            if not ok or not aura then break end
+            if not (IsSecret(aura.name) or IsSecret(aura.spellId)) then
+                callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            end
             i = i + 1
         end
         return
@@ -116,8 +128,8 @@ local function ForEachUnitDebuff(unit, callback)
 
     -- 3. AuraUtil.ForEachAura
     if AuraUtil and AuraUtil.ForEachAura then
-        AuraUtil.ForEachAura(unit, "HARMFUL", nil, function(aura)
-            if aura then
+        pcall(AuraUtil.ForEachAura, unit, "HARMFUL", nil, function(aura)
+            if aura and not (IsSecret(aura.name) or IsSecret(aura.spellId)) then
                 callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
             end
         end)
@@ -128,22 +140,27 @@ local function ForEachUnitDebuff(unit, callback)
     if _G.UnitDebuff then
         local i = 1
         while true do
-            local name, icon, count, debuffType, duration, expirationTime, unitCaster, _, _, spellId = _G.UnitDebuff(unit, i)
-            if not name then break end
-            callback(name, icon, count, duration, expirationTime, unitCaster, spellId)
+            local ok, name, icon, count, debuffType, duration, expirationTime, unitCaster, _, _, spellId = pcall(_G.UnitDebuff, unit, i)
+            if not ok or not name then break end
+            if not (IsSecret(name) or IsSecret(spellId)) then
+                callback(name, icon, count, duration, expirationTime, unitCaster, spellId)
+            end
             i = i + 1
         end
     end
 end
 
 -------------------------------------------------------------------------------
--- Scan and Reconcile Unit Debuffs
+-- Scan and Reconcile Unit Debuffs (Target & Nameplate Only)
 -------------------------------------------------------------------------------
 local function ScanUnit(unit)
-    if not UnitExists(unit) then return end
-    if UnitIsDead(unit) then
-        local deadGUID = UnitGUID(unit)
-        if deadGUID and ns.activeTimers[deadGUID] then
+    local okExists, exists = pcall(UnitExists, unit)
+    if not okExists or not exists or IsSecret(exists) then return end
+
+    local okDead, isDead = pcall(UnitIsDead, unit)
+    if not okDead or isDead or IsSecret(isDead) then
+        local okGuid, deadGUID = pcall(UnitGUID, unit)
+        if okGuid and deadGUID and not IsSecret(deadGUID) and ns.activeTimers[deadGUID] then
             ns.activeTimers[deadGUID] = nil
             if ns.Display and ns.Display.OnTimerUpdated then
                 ns.Display:OnTimerUpdated()
@@ -152,21 +169,41 @@ local function ScanUnit(unit)
         return
     end
 
-    local guid = UnitGUID(unit)
-    if not guid then return end
+    -- Filter out friendly/unattackable units (charmed critters, party members, pets)
+    -- Warlock offensive DoTs and CCs can only exist on attackable hostile units.
+    local okAttack, canAttack = pcall(UnitCanAttack, "player", unit)
+    if okAttack and not IsSecret(canAttack) and canAttack == false then
+        local okGuid, nonHostileGUID = pcall(UnitGUID, unit)
+        if okGuid and nonHostileGUID and not IsSecret(nonHostileGUID) and ns.activeTimers[nonHostileGUID] then
+            ns.activeTimers[nonHostileGUID] = nil
+            if ns.Display and ns.Display.OnTimerUpdated then
+                ns.Display:OnTimerUpdated()
+            end
+        end
+        return
+    end
 
-    local unitName = UnitName(unit) or "Unknown"
+    local okGuid, guid = pcall(UnitGUID, unit)
+    if not okGuid or not guid or IsSecret(guid) then return end
+
+    local okName, unitName = pcall(UnitName, unit)
+    if not okName or not unitName or IsSecret(unitName) then
+        unitName = "Unknown"
+    end
+
     local now = GetTime()
     local foundSpells = {}
     local anyAdded = false
 
     ForEachUnitDebuff(unit, function(name, icon, count, duration, expirationTime, sourceUnit, spellId)
         -- Only track debuffs cast by the player
-        local isPlayerSource = (sourceUnit == "player") or (sourceUnit == nil and duration and duration > 0)
-        if isPlayerSource and name and (TRACKED_SPELLS[name] or (spellId and TRACKED_SPELLS[spellId])) then
+        local hasDuration = duration and not IsSecret(duration) and duration > 0
+        local isPlayerSource = (sourceUnit == "player") or (sourceUnit == nil and hasDuration)
+        if isPlayerSource and name and not IsSecret(name) and (TRACKED_SPELLS[name] or (spellId and not IsSecret(spellId) and TRACKED_SPELLS[spellId])) then
             local spellDef = TRACKED_SPELLS[name] or TRACKED_SPELLS[spellId]
-            local effDuration = (duration and duration > 0) and duration or spellDef.duration
-            local effExpiration = (expirationTime and expirationTime > 0) and expirationTime or (now + effDuration)
+            local effDuration = hasDuration and duration or spellDef.duration
+            local hasExp = expirationTime and not IsSecret(expirationTime) and expirationTime > 0
+            local effExpiration = hasExp and expirationTime or (now + effDuration)
             local effIcon = icon or spellDef.icon
 
             if not ns.activeTimers[guid] then
@@ -182,7 +219,7 @@ local function ScanUnit(unit)
             end
 
             ns.activeTimers[guid].spells[name] = {
-                spellId = spellId or spellDef.spellId,
+                spellId = (spellId and not IsSecret(spellId) and spellId) or spellDef.spellId,
                 spellName = name,
                 icon = effIcon,
                 startTime = effExpiration - effDuration,

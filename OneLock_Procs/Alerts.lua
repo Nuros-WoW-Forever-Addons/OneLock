@@ -294,10 +294,14 @@ end
 local hadShadowTrance = false
 local hadBacklash = false
 
+local function IsSecret(val)
+    return issecretvalue and issecretvalue(val)
+end
+
 local function HasBuff(spellID, spellName)
     if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
         local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
-        if ok and aura then
+        if ok and aura and not IsSecret(aura) then
             return true, aura.icon
         end
     end
@@ -307,7 +311,10 @@ local function HasBuff(spellID, spellName)
         while true do
             local ok, aura = pcall(C_UnitAuras.GetBuffDataByIndex, "player", i)
             if not ok or not aura then break end
-            if aura.spellId == spellID or aura.name == spellName then
+            if not IsSecret(aura.spellId) and aura.spellId == spellID then
+                return true, aura.icon
+            end
+            if not IsSecret(aura.name) and aura.name == spellName then
                 return true, aura.icon
             end
             i = i + 1
@@ -317,9 +324,12 @@ local function HasBuff(spellID, spellName)
     if _G.UnitBuff then
         local i = 1
         while true do
-            local name, icon, _, _, _, _, _, _, _, id = _G.UnitBuff("player", i)
-            if not name then break end
-            if id == spellID or name == spellName then
+            local ok, name, icon, _, _, _, _, _, _, id = pcall(_G.UnitBuff, "player", i)
+            if not ok or not name then break end
+            if not IsSecret(id) and id == spellID then
+                return true, icon
+            end
+            if not IsSecret(name) and name == spellName then
                 return true, icon
             end
             i = i + 1

@@ -76,15 +76,20 @@ end
 -------------------------------------------------------------------------------
 -- Target Alive / Dead Status Check
 -------------------------------------------------------------------------------
+local function IsSecret(val)
+    return issecretvalue and issecretvalue(val)
+end
+
 local function CheckTargetStatus(targetName)
-    if not targetName then return "UNKNOWN" end
+    if not targetName or IsSecret(targetName) then return "UNKNOWN" end
 
     -- Check party/raid units
     if IsInRaid and IsInRaid() then
         local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
         for i = 1, num do
             local unit = "raid" .. i
-            if UnitName(unit) == targetName then
+            local uName = UnitName(unit)
+            if uName and not IsSecret(uName) and uName == targetName then
                 return (UnitIsDeadOrGhost(unit) and "DEAD") or "ALIVE"
             end
         end
@@ -92,13 +97,15 @@ local function CheckTargetStatus(targetName)
         local num = (GetNumSubgroupMembers and GetNumSubgroupMembers()) or 0
         for i = 1, num do
             local unit = "party" .. i
-            if UnitName(unit) == targetName then
+            local uName = UnitName(unit)
+            if uName and not IsSecret(uName) and uName == targetName then
                 return (UnitIsDeadOrGhost(unit) and "DEAD") or "ALIVE"
             end
         end
     end
 
-    if UnitName("target") == targetName then
+    local tName = UnitName("target")
+    if tName and not IsSecret(tName) and tName == targetName then
         return (UnitIsDeadOrGhost("target") and "DEAD") or "ALIVE"
     end
 

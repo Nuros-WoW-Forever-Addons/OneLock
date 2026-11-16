@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.6] - 2026-11-15
+
+### Fixed
+- **Secret Aura Taint Handling (`C_UnitAuras.GetDebuffDataByIndex`)**:
+  - Fixed fatal Lua error `GetDebuffDataByIndex(): Auras cannot be accessed when secret while tainted by 'OneLock_Timers'` triggered during quests with charmed or secret aura units (e.g., Deeprun Rat Roundup).
+  - Wrapped all debuff and buff enumerations in `pcall` across `Tracker.lua` and `Alerts.lua` so engine secret access blocks fail gracefully rather than throwing uncaught errors.
+- **Offensive Unit Hostility Filter (`UnitCanAttack`)**:
+  - Added filter in `ScanUnit` to ignore unattackable, friendly, or charmed units. Since Warlock offensive DoTs and CCs can only be applied to hostile targets, friendly NPCs, charmed critters, and party members are completely bypassed.
+- **Secret Value Comparison Protection**:
+  - Added `IsSecret` (`issecretvalue`) guards across `Tracker.lua`, `Display.lua`, `Alerts.lua`, and `SoulstoneTracker.lua` to ensure unit names, GUIDs, durations, and spell IDs with secret value flags do not trigger comparison or arithmetic errors.
+
+---
+
 ## [0.1.5] - 2026-11-15
 
 ### Added

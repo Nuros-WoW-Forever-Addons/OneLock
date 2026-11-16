@@ -174,6 +174,16 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.7 (Secret Aura Taint & Non-Hostile Unit Hardening)
+- **Resolved `GetDebuffDataByIndex` Secret Aura Taint Error**:
+  - Addressed fatal runtime error triggered during quests with charmed or secret aura units (e.g., Deeprun Rat Roundup): `GetDebuffDataByIndex(): Auras cannot be accessed when secret while tainted by 'OneLock_Timers'`.
+  - Wrapped all `C_UnitAuras.GetDebuffDataByIndex`, `C_UnitAuras.GetAuraDataByIndex`, `AuraUtil.ForEachAura`, and `_G.UnitDebuff` queries in `pcall` across the entire suite. When an aura is flagged secret by the engine, `pcall` cleanly intercepts the failure, preventing unhandled exceptions.
+- **Offensive Unit Hostility Filter (`UnitCanAttack`)**:
+  - Filtered out unattackable/friendly units in `Tracker.lua`. Offensive Warlock DoTs and CCs can only exist on attackable hostile targets; charmed critters, party members, and friendly NPCs are immediately bypassed.
+- **Deep Midnight / Camelot Secret Value Protection**:
+  - Added `IsSecret` (`issecretvalue`) checks across `Tracker.lua`, `Display.lua`, `Alerts.lua`, and `SoulstoneTracker.lua`.
+  - Guarded `UnitGUID`, `UnitName`, `aura.name`, `aura.spellId`, `duration`, and `expirationTime` against secret string/number comparison and arithmetic throws.
+
 ### Spin 0.1.6 (Movable/Sizable Proc Alert Banner & Sound Selection)
 - **Clarified Alert Banner Architecture**:
   - Confirmed the proc alert banner (`OneLockProcAlertBanner`) is an addon-built custom frame in `OneLock_Procs/Alerts.lua`, not a Blizzard native alert frame.

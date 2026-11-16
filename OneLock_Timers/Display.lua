@@ -322,6 +322,9 @@ function Display:UpdateBars()
 
     local db = ns.db
     local currentTargetGUID = UnitGUID("target")
+    if issecretvalue and issecretvalue(currentTargetGUID) then
+        currentTargetGUID = nil
+    end
 
     -- Choose data source (test mode vs active combat data)
     local sourceData = (ns.isTestMode and testTimerCache) or ns.activeTimers
@@ -345,8 +348,8 @@ function Display:UpdateBars()
 
     -- Sort: current target always at the top, then by most recently updated
     table.sort(targetList, function(a, b)
-        local aIsTarget = (a.guid == currentTargetGUID) or (a.isTarget == true)
-        local bIsTarget = (b.guid == currentTargetGUID) or (b.isTarget == true)
+        local aIsTarget = (currentTargetGUID and a.guid == currentTargetGUID) or (a.isTarget == true)
+        local bIsTarget = (currentTargetGUID and b.guid == currentTargetGUID) or (b.isTarget == true)
         if aIsTarget ~= bIsTarget then
             return aIsTarget
         end
@@ -361,7 +364,7 @@ function Display:UpdateBars()
         if targetsShown >= maxTargets then break end
         targetsShown = targetsShown + 1
 
-        local isCurrentTarget = (target.guid == currentTargetGUID) or (target.isTarget == true)
+        local isCurrentTarget = (currentTargetGUID and target.guid == currentTargetGUID) or (target.isTarget == true)
 
         -- 1. Create Target Header Frame
         if db.showTargetHeader then
@@ -373,13 +376,18 @@ function Display:UpdateBars()
                 header:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -6)
             end
 
+            local rawName = target.name
+            if not rawName or (issecretvalue and issecretvalue(rawName)) then
+                rawName = "Unknown"
+            end
+
             if isCurrentTarget then
                 header:SetBackdropColor(0.2, 0.16, 0.05, 0.85)
-                header.text:SetText(string.format("|cffffd100[Target]|r %s", target.name or "Unknown"))
+                header.text:SetText(string.format("|cffffd100[Target]|r %s", rawName))
                 header.text:SetTextColor(db.colorTargetHeader.r, db.colorTargetHeader.g, db.colorTargetHeader.b)
             else
                 header:SetBackdropColor(0.08, 0.08, 0.1, 0.65)
-                header.text:SetText(target.name or "Unknown")
+                header.text:SetText(rawName)
                 header.text:SetTextColor(db.colorNonTargetHeader.r, db.colorNonTargetHeader.g, db.colorNonTargetHeader.b)
             end
 
