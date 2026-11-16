@@ -174,6 +174,15 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.9 (Combat Spellcast Engine & Aura Pruning Isolation)
+- **Direct Player Spellcast Tracking (`UNIT_SPELLCAST_SUCCEEDED`)**:
+  - Addressed Midnight / Camelot combat engine behavior where enemy auras are gated behind secret flags for tainted AddOns during combat.
+  - Linked `UNIT_SPELLCAST_SENT` and `UNIT_SPELLCAST_SUCCEEDED` directly to timer creation, recording target GUID, spell duration, icon, and expiration immediately upon player cast completion.
+  - Guarantees 100% reliable timer bar generation during active combat even when `C_UnitAuras.GetDebuffDataByIndex` is blocked by secret aura taint.
+- **Aura Prune Isolation**:
+  - Gated debuff pruning in `ScanUnit` behind `anyAurasRead`. If aura queries fail or return 0 auras due to secret taint, active timers continue running for their full duration rather than being erroneously pruned.
+  - Cleaned dead target entries immediately on `PLAYER_TARGET_CHANGED` and `NAME_PLATE_UNIT_REMOVED`.
+
 ### Spin 0.1.8 (Complete MovableFrames Decoupling & Native Movable Default)
 - **Purged OneLock from MovableFrames**:
   - Identified residual `MovableFramesDB.customFrames["OneLockTimersAnchor"]` entry written during initial v0.1.0 scaffold.

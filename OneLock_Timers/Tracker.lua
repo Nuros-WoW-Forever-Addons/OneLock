@@ -194,8 +194,11 @@ local function ScanUnit(unit)
     local now = GetTime()
     local foundSpells = {}
     local anyAdded = false
+    local anyAurasRead = false
 
     ForEachUnitDebuff(unit, function(name, icon, count, duration, expirationTime, sourceUnit, spellId)
+        anyAurasRead = true
+
         -- Only track debuffs cast by the player
         local hasDuration = duration and not IsSecret(duration) and duration > 0
         local isPlayerSource = (sourceUnit == "player") or (sourceUnit == nil and hasDuration)
@@ -233,8 +236,9 @@ local function ScanUnit(unit)
         end
     end)
 
-    -- If this unit was previously tracked, prune debuffs that are no longer on it
-    if ns.activeTimers[guid] then
+    -- If this unit was previously tracked, ONLY prune if we successfully read real auras from it.
+    -- If aura scanning was blocked by combat secret taint, keep active timers running!
+    if anyAurasRead and ns.activeTimers[guid] then
         local removedAny = false
         for activeName, _ in pairs(ns.activeTimers[guid].spells) do
             if not foundSpells[activeName] then
@@ -256,6 +260,76 @@ local function ScanUnit(unit)
         if (anyAdded or removedAny) and ns.Display and ns.Display.OnTimerUpdated then
             ns.Display:OnTimerUpdated()
         end
+    elseif anyAdded and ns.Display and ns.Display.OnTimerUpdated then
+        ns.Display:OnTimerUpdated()
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Player Spellcast Engine (Combat Secret Immunity)
+-------------------------------------------------------------------------------
+local lastCastTargetName = nil
+local lastCastTargetGUID = nil
+
+local function OnSpellcastSent(unit, target, castGUID, spellID)
+    if unit == "player" then
+        lastCastTargetName = target
+        local curTargetName = UnitName("target")
+        if target and curTargetName and not IsSecret(curTargetName) and curTargetName == target then
+            lastCastTargetGUID = UnitGUID("target")
+        elseif target and UnitName("focus") == target then
+            lastCastTargetGUID = UnitGUID("focus")
+        elseif target and UnitName("mouseover") == target then
+            lastCastTargetGUID = UnitGUID("mouseover")
+        else
+            lastCastTargetGUID = UnitGUID("target")
+        end
+    end
+end
+
+local function OnPlayerSpellcastSucceeded(spellID)
+    if not spellID or IsSecret(spellID) then return end
+    local spellName, icon = GetSpellDetails(spellID)
+    if not spellName or IsSecret(spellName) then return end
+
+    local spellDef = TRACKED_SPELLS[spellName]
+    if not spellDef then return end
+
+    local targetGUID = lastCastTargetGUID or UnitGUID("target")
+    local targetName = lastCastTargetName or UnitName("target")
+
+    if not targetGUID or IsSecret(targetGUID) then return end
+    if not targetName or IsSecret(targetName) then targetName = "Target" end
+
+    local now = GetTime()
+    local effDuration = spellDef.duration
+    local effExpiration = now + effDuration
+    local effIcon = (icon and icon ~= "") and icon or spellDef.icon
+
+    if not ns.activeTimers[targetGUID] then
+        ns.activeTimers[targetGUID] = {
+            guid = targetGUID,
+            name = targetName,
+            lastSeen = now,
+            spells = {},
+        }
+    else
+        ns.activeTimers[targetGUID].name = targetName
+        ns.activeTimers[targetGUID].lastSeen = now
+    end
+
+    ns.activeTimers[targetGUID].spells[spellName] = {
+        spellId = spellID,
+        spellName = spellName,
+        icon = effIcon,
+        startTime = now,
+        duration = effDuration,
+        expirationTime = effExpiration,
+        category = spellDef.category,
+    }
+
+    if ns.Display and ns.Display.OnTimerUpdated then
+        ns.Display:OnTimerUpdated()
     end
 end
 
@@ -310,16 +384,27 @@ function Tracker:Initialize()
     trackerFrame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
     trackerFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
     trackerFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+    trackerFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
     trackerFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     trackerFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-    trackerFrame:SetScript("OnEvent", function(self, event, unit, arg2, arg3)
+    trackerFrame:SetScript("OnEvent", function(self, event, unit, arg2, arg3, arg4)
         if event == "UNIT_AURA" then
             if unit then
                 ScanUnit(unit)
             end
         elseif event == "PLAYER_TARGET_CHANGED" then
-            ScanUnit("target")
+            if UnitExists("target") and UnitIsDead("target") then
+                local guid = UnitGUID("target")
+                if guid and not IsSecret(guid) and ns.activeTimers[guid] then
+                    ns.activeTimers[guid] = nil
+                    if ns.Display and ns.Display.OnTimerUpdated then
+                        ns.Display:OnTimerUpdated()
+                    end
+                end
+            else
+                ScanUnit("target")
+            end
             if ns.Display and ns.Display.OnTargetChanged then
                 ns.Display:OnTargetChanged()
             end
@@ -334,15 +419,20 @@ function Tracker:Initialize()
         elseif event == "NAME_PLATE_UNIT_REMOVED" then
             if unit and UnitIsDead(unit) then
                 local guid = UnitGUID(unit)
-                if guid and ns.activeTimers[guid] then
+                if guid and not IsSecret(guid) and ns.activeTimers[guid] then
                     ns.activeTimers[guid] = nil
                     if ns.Display and ns.Display.OnTimerUpdated then
                         ns.Display:OnTimerUpdated()
                     end
                 end
             end
+        elseif event == "UNIT_SPELLCAST_SENT" then
+            OnSpellcastSent(unit, arg2, arg3, arg4)
         elseif event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player" then
-            -- Immediately refresh target when player finishes casting
+            local spellID = (type(arg3) == "number" and arg3) or (type(arg2) == "number" and arg2)
+            if spellID then
+                OnPlayerSpellcastSucceeded(spellID)
+            end
             ScanUnit("target")
         elseif event == "PLAYER_REGEN_ENABLED" then
             ns.playerGUID = UnitGUID("player")
@@ -351,5 +441,5 @@ function Tracker:Initialize()
 
     trackerFrame:SetScript("OnUpdate", OnGarbageCollectUpdate)
     Tracker.frame = trackerFrame
-    ns:Log("INFO", "Tracker", "Modern Tracker initialized with C_UnitAuras and nameplate routing.")
+    ns:Log("INFO", "Tracker", "Modern Tracker initialized with C_UnitAuras and spellcast engine.")
 end

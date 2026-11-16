@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.8] - 2026-11-15
+
+### Added
+- **Combat Spellcast Engine (`UNIT_SPELLCAST_SUCCEEDED`)**:
+  - Implemented direct cast-based timer generation in `Tracker.lua`. When a player casts any Warlock DoT or CC (Corruption, Immolate, Agony, Unstable Affliction, Siphon Life, Fear, Banish, etc.), the timer is immediately created using the spell duration and target GUID.
+  - Immune to Midnight / Camelot secret aura taint in combat, ensuring timer bars reliably display even when `C_UnitAuras.GetDebuffDataByIndex` is blocked by engine restrictions.
+- **Aura Pruning Isolation**:
+  - Gated debuff removal behind `anyAurasRead`. Active cast timers will no longer be pruned if the aura scan returns 0 auras due to secret access blocks.
+
+---
+
 ## [0.1.7] - 2026-11-15
 
 ### Changed
