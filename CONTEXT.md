@@ -174,6 +174,19 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.12 (Compact Icon Mode Configuration — Active on Dev Branch)
+- **Compact Horizontal Spell Icon Configuration (`displayMode = "ICONS"`)**:
+  - Implemented second display mode for `OneLock_Timers` to significantly reduce vertical screen footprint when tracking 3+ enemies.
+  - In `ICONS` mode, spell timers appear as a horizontal row of spell icons running left-to-right immediately under each target's nameplate header without statusbars.
+  - The countdown number overlays directly onto each spell icon with an outline font and high-contrast backplate.
+  - When remaining duration enters the Pandemic refresh window (< 3.0s or configured threshold), the countdown number turns golden amber (`colorPandemic`) and an action-border glow activates around the icon.
+  - Implemented `iconPool` and `activeIcons` frame pooling.
+- **OptionsUI & Slash Command Controls**:
+  - Added `[Mode: Timer Bars / Compact Icons]` toggle button and `Icon Size` stepper (16 - 48 px) in Options Panel Section 1.
+  - Added slash command `/ol mode [bars|icons]`.
+- **Branch Policy Notice**:
+  - Kept exclusively on `dev` branch for live testing per user instructions; not merged to `main` until verified.
+
 ### Spin 0.1.11 (Soulstone Resurrection Consumption Resolution & State Machine)
 - **Resolved Resurrection Timer Persistence**:
   - Addressed issue where the Soulstone HUD bar continued counting down after a soulstoned target died and resurrected.

@@ -264,6 +264,80 @@ local function ReleaseBars()
 end
 
 -------------------------------------------------------------------------------
+-- Compact Icon Pool (Compact Mode)
+-------------------------------------------------------------------------------
+local iconPool = {}
+local activeIcons = {}
+
+local function AcquireIcon()
+    local iconFrame = table.remove(iconPool)
+    if not iconFrame then
+        iconFrame = CreateFrame("Frame", nil, Display.anchor, "BackdropTemplate")
+        iconFrame:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = false,
+            edgeSize = 8,
+            insets = { left = 1, right = 1, top = 1, bottom = 1 }
+        })
+        iconFrame:SetBackdropColor(0, 0, 0, 0.85)
+        iconFrame:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
+
+        local tex = iconFrame:CreateTexture(nil, "ARTWORK")
+        tex:SetPoint("TOPLEFT", iconFrame, "TOPLEFT", 1, -1)
+        tex:SetPoint("BOTTOMRIGHT", iconFrame, "BOTTOMRIGHT", -1, 1)
+        tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        iconFrame.tex = tex
+
+        -- Semi-transparent dark background band for high contrast overlay
+        local fontBg = iconFrame:CreateTexture(nil, "OVERLAY")
+        fontBg:SetPoint("BOTTOMLEFT", iconFrame, "BOTTOMLEFT", 1, 1)
+        fontBg:SetPoint("BOTTOMRIGHT", iconFrame, "BOTTOMRIGHT", -1, 1)
+        fontBg:SetHeight(12)
+        fontBg:SetTexture("Interface\\Buttons\\WHITE8x8")
+        fontBg:SetVertexColor(0, 0, 0, 0.65)
+        iconFrame.fontBg = fontBg
+
+        -- Countdown Time Text Overlay
+        local timeText = iconFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        timeText:SetPoint("BOTTOM", iconFrame, "BOTTOM", 0, 1)
+        local fontPath, fontSize = timeText:GetFont()
+        if fontPath then
+            timeText:SetFont(fontPath, math.max(9, (fontSize or 10)), "OUTLINE")
+        end
+        timeText:SetJustifyH("CENTER")
+        iconFrame.timeText = timeText
+
+        -- Glowing Pandemic Action Border
+        local glow = iconFrame:CreateTexture(nil, "OVERLAY")
+        glow:SetPoint("TOPLEFT", iconFrame, "TOPLEFT", -2, 2)
+        glow:SetPoint("BOTTOMRIGHT", iconFrame, "BOTTOMRIGHT", 2, -2)
+        glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+        glow:SetBlendMode("ADD")
+        glow:SetVertexColor(1.0, 0.82, 0.0, 0.95)
+        glow:Hide()
+        iconFrame.glow = glow
+    end
+
+    local size = ns.db.iconSize or 24
+    iconFrame:SetSize(size, size)
+    iconFrame:Show()
+    table.insert(activeIcons, iconFrame)
+    return iconFrame
+end
+
+local function ReleaseIcons()
+    for _, icon in ipairs(activeIcons) do
+        icon:Hide()
+        icon:ClearAllPoints()
+        icon.timerData = nil
+        if icon.glow then icon.glow:Hide() end
+        table.insert(iconPool, icon)
+    end
+    wipe(activeIcons)
+end
+
+-------------------------------------------------------------------------------
 -- Simulated Test Mode Data
 -------------------------------------------------------------------------------
 local testTimerCache = nil
@@ -339,6 +413,7 @@ end
 function Display:UpdateBars()
     ReleaseHeaders()
     ReleaseBars()
+    ReleaseIcons()
 
     local db = ns.db
     local currentTargetGUID = UnitGUID("target")
@@ -387,8 +462,9 @@ function Display:UpdateBars()
         local isCurrentTarget = (currentTargetGUID and target.guid == currentTargetGUID) or (target.isTarget == true)
 
         -- 1. Create Target Header Frame
+        local header = nil
         if db.showTargetHeader then
-            local header = AcquireHeader()
+            header = AcquireHeader()
             header:ClearAllPoints()
             if previousElement == Display.anchor then
                 header:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
@@ -427,89 +503,170 @@ function Display:UpdateBars()
             return aRem < bRem
         end)
 
-        -- 3. Create Spell StatusBars
-        for _, timer in ipairs(spellList) do
-            local bar = AcquireBar()
-            bar:ClearAllPoints()
-            if previousElement == Display.anchor then
-                bar:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
-            else
-                bar:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -2)
+        if db.displayMode == "ICONS" then
+            -- ================================================================
+            -- COMPACT ICON MODE: Spell icons left-to-right under the name header
+            -- ================================================================
+            local prevIcon = nil
+            local rowLeader = nil
+            for _, timer in ipairs(spellList) do
+                local icon = AcquireIcon()
+                icon:ClearAllPoints()
+                if not prevIcon then
+                    if header then
+                        icon:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
+                    elseif previousElement == Display.anchor then
+                        icon:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
+                    else
+                        icon:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -4)
+                    end
+                    rowLeader = icon
+                else
+                    icon:SetPoint("LEFT", prevIcon, "RIGHT", 4, 0)
+                end
+
+                icon.timerData = timer
+                if timer.icon and timer.icon ~= "" then
+                    icon.tex:SetTexture(timer.icon)
+                end
+
+                local remaining = math.max(0, (timer.expirationTime or 0) - now)
+                icon.timeText:SetText(FormatTime(remaining))
+
+                if remaining <= (db.pandemicThreshold or 3.0) then
+                    icon.timeText:SetTextColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
+                    if icon.glow then icon.glow:Show() end
+                    icon:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
+                else
+                    icon.timeText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+                    if icon.glow then icon.glow:Hide() end
+                    icon:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
+                end
+
+                prevIcon = icon
             end
 
-            bar.timerData = timer
-            bar:SetMinMaxValues(0, timer.duration or 18)
-
-            local remaining = math.max(0, (timer.expirationTime or 0) - now)
-            bar:SetValue(remaining)
-            bar.nameText:SetText(timer.spellName or "")
-            bar.timeText:SetText(FormatTime(remaining))
-
-            if db.showSpellIcon and timer.icon and timer.icon ~= "" then
-                bar.icon:SetTexture(timer.icon)
-                bar.icon:Show()
-            else
-                bar.icon:Hide()
+            if rowLeader then
+                previousElement = rowLeader
             end
+        else
+            -- ================================================================
+            -- FULL BAR MODE: Cascading StatusBars vertically
+            -- ================================================================
+            for _, timer in ipairs(spellList) do
+                local bar = AcquireBar()
+                bar:ClearAllPoints()
+                if previousElement == Display.anchor then
+                    bar:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
+                else
+                    bar:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -2)
+                end
 
-            -- Pandemic Refresh Color Shift (< 3.0s)
-            if remaining <= (db.pandemicThreshold or 3.0) then
-                bar:SetStatusBarColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, db.colorPandemic.a)
-            else
-                bar:SetStatusBarColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, db.colorNormal.a)
+                bar.timerData = timer
+                bar:SetMinMaxValues(0, timer.duration or 18)
+
+                local remaining = math.max(0, (timer.expirationTime or 0) - now)
+                bar:SetValue(remaining)
+                bar.nameText:SetText(timer.spellName or "")
+                bar.timeText:SetText(FormatTime(remaining))
+
+                if db.showSpellIcon and timer.icon and timer.icon ~= "" then
+                    bar.icon:SetTexture(timer.icon)
+                    bar.icon:Show()
+                else
+                    bar.icon:Hide()
+                end
+
+                -- Pandemic Refresh Color Shift (< 3.0s)
+                if remaining <= (db.pandemicThreshold or 3.0) then
+                    bar:SetStatusBarColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, db.colorPandemic.a)
+                else
+                    bar:SetStatusBarColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, db.colorNormal.a)
+                end
+
+                previousElement = bar
             end
-
-            previousElement = bar
         end
     end
 end
 
 -------------------------------------------------------------------------------
--- Smooth Continuous OnUpdate Dispatcher (One Frame for All Active Bars)
+-- Smooth Continuous OnUpdate Dispatcher (One Frame for All Active Bars/Icons)
 -------------------------------------------------------------------------------
 local function OnDisplayFrameUpdate(self, elapsed)
-    if #activeBars == 0 then return end
+    if #activeBars == 0 and #activeIcons == 0 then return end
 
     local now = GetTime()
     local db = ns.db
     local threshold = db.pandemicThreshold or 3.0
 
-    for _, bar in ipairs(activeBars) do
-        local timer = bar.timerData
-        if timer and timer.expirationTime then
-            local remaining = timer.expirationTime - now
-            if ns.isTestMode and remaining <= 0 then
-                -- Automatically cycle test bars so they constantly animate and loop
-                local dur = timer.duration or 18
-                timer.expirationTime = now + dur
-                remaining = dur
-            elseif remaining <= 0 then
-                remaining = 0
-            end
+    if #activeBars > 0 then
+        for _, bar in ipairs(activeBars) do
+            local timer = bar.timerData
+            if timer and timer.expirationTime then
+                local remaining = timer.expirationTime - now
+                if ns.isTestMode and remaining <= 0 then
+                    -- Automatically cycle test bars so they constantly animate and loop
+                    local dur = timer.duration or 18
+                    timer.expirationTime = now + dur
+                    remaining = dur
+                elseif remaining <= 0 then
+                    remaining = 0
+                end
 
-            bar:SetValue(remaining)
-            bar.timeText:SetText(FormatTime(remaining))
+                bar:SetValue(remaining)
+                bar.timeText:SetText(FormatTime(remaining))
 
-            -- Position Spark
-            local duration = timer.duration or 18
-            if duration > 0 and bar.spark then
-                local pct = remaining / duration
-                local barWidth = bar:GetWidth()
-                local sparkOffset = (pct * barWidth) - (bar.spark:GetWidth() / 2)
-                bar.spark:ClearAllPoints()
-                bar.spark:SetPoint("CENTER", bar, "LEFT", sparkOffset, 0)
-                if remaining > 0 then
-                    bar.spark:Show()
+                -- Position Spark
+                local duration = timer.duration or 18
+                if duration > 0 and bar.spark then
+                    local pct = remaining / duration
+                    local barWidth = bar:GetWidth()
+                    local sparkOffset = (pct * barWidth) - (bar.spark:GetWidth() / 2)
+                    bar.spark:ClearAllPoints()
+                    bar.spark:SetPoint("CENTER", bar, "LEFT", sparkOffset, 0)
+                    if remaining > 0 then
+                        bar.spark:Show()
+                    else
+                        bar.spark:Hide()
+                    end
+                end
+
+                -- Dynamic Pandemic Color Shift
+                if remaining <= threshold then
+                    bar:SetStatusBarColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, db.colorPandemic.a)
                 else
-                    bar.spark:Hide()
+                    bar:SetStatusBarColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, db.colorNormal.a)
                 end
             end
+        end
+    end
 
-            -- Dynamic Pandemic Color Shift
-            if remaining <= threshold then
-                bar:SetStatusBarColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, db.colorPandemic.a)
-            else
-                bar:SetStatusBarColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, db.colorNormal.a)
+    if #activeIcons > 0 then
+        for _, icon in ipairs(activeIcons) do
+            local timer = icon.timerData
+            if timer and timer.expirationTime then
+                local remaining = timer.expirationTime - now
+                if ns.isTestMode and remaining <= 0 then
+                    local dur = timer.duration or 18
+                    timer.expirationTime = now + dur
+                    remaining = dur
+                elseif remaining <= 0 then
+                    remaining = 0
+                end
+
+                icon.timeText:SetText(FormatTime(remaining))
+
+                -- Dynamic Pandemic Color Shift on text & glow border
+                if remaining <= threshold then
+                    icon.timeText:SetTextColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
+                    if icon.glow then icon.glow:Show() end
+                    icon:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
+                else
+                    icon.timeText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+                    if icon.glow then icon.glow:Hide() end
+                    icon:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
+                end
             end
         end
     end

@@ -306,6 +306,33 @@ local function PopulateControls(content, isStandalone)
 
     curY = curY - 34
 
+    -- Mode Selector: Timer Bars vs Compact Icons
+    local btnMode = CreateButton(content, (ns.db and ns.db.displayMode == "ICONS") and "Mode: Compact Icons" or "Mode: Timer Bars", 175, 24, function(self)
+        if ns.db then
+            ns.db.displayMode = (ns.db.displayMode == "ICONS") and "BARS" or "ICONS"
+            self:SetText((ns.db.displayMode == "ICONS") and "Mode: Compact Icons" or "Mode: Timer Bars")
+            if ns.Display and ns.Display.ApplyDisplaySettings then
+                ns.Display:ApplyDisplaySettings()
+            end
+            ns:Print(string.format("Display mode set to |cffffd100%s|r.", (ns.db.displayMode == "ICONS") and "Compact Icons" or "Timer Bars"))
+        end
+    end)
+    btnMode.Refresh = function(self)
+        self:SetText((ns.db and ns.db.displayMode == "ICONS") and "Mode: Compact Icons" or "Mode: Timer Bars")
+    end
+    btnMode:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, btnMode)
+
+    local stepIconSize = CreateStepper(content, "Icon Size:", 16, 48, 2,
+        function() return (ns.db and ns.db.iconSize) or 24 end,
+        function(v) if ns.db then ns.db.iconSize = v end end,
+        "%d px",
+        function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
+    )
+    stepIconSize:SetPoint("TOPLEFT", content, "TOPLEFT", 190, curY)
+    table.insert(refreshables, stepIconSize)
+    curY = curY - 32
+
     -- Steppers: Width, Height, Scale, Max Targets, Pandemic Threshold
     local stepWidth = CreateStepper(content, "Timer Bar Width:", 100, 300, 10,
         function() return (ns.db and ns.db.barWidth) or 160 end,

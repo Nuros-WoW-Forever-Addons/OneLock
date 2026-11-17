@@ -13,6 +13,8 @@ ns.version = "0.1.0"
 local defaultDB = {
     version = 2,
     locked = false, -- Movable by default (controlled entirely by OneLock suite)
+    displayMode = "BARS", -- "BARS" (Full StatusBars) or "ICONS" (Compact Icon Row)
+    iconSize = 24,        -- Compact spell icon size in pixels (16 - 48)
     barWidth = 160,
     barHeight = 16,
     barScale = 1.0,
@@ -165,9 +167,23 @@ local function HandleSlashCommand(msg)
         else
             ns:Print("Usage: |cffffd100/ol max <1 - 10>|r")
         end
+    elseif cmd == "mode" then
+        arg = arg and arg:lower() or ""
+        if arg == "bars" or arg == "bar" then
+            ns.db.displayMode = "BARS"
+        elseif arg == "icons" or arg == "icon" then
+            ns.db.displayMode = "ICONS"
+        else
+            ns.db.displayMode = (ns.db.displayMode == "ICONS") and "BARS" or "ICONS"
+        end
+        if ns.Display and ns.Display.ApplyDisplaySettings then
+            ns.Display:ApplyDisplaySettings()
+        end
+        ns:Print(string.format("Display mode set to |cffffd100%s|r.", (ns.db.displayMode == "ICONS") and "Compact Icons" or "Timer Bars"))
     else
         ns:Print("OneLock Timers commands:")
         print("  |cffffd100/ol|r        — Open graphical Options Panel")
+        print("  |cffffd100/ol mode [bars|icons]|r — Toggle between Timer Bars and Compact Icons")
         print("  |cffffd100/ol unlock|r — Unlock anchor to drag and move bars")
         print("  |cffffd100/ol lock|r   — Lock anchor in current position")
         print("  |cffffd100/ol reset|r  — Reset anchor to default position")

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Compact Icon Mode Configuration (`OneLock_Timers`)**:
+  - Added new display configuration mode: `displayMode = "ICONS"` alongside traditional `displayMode = "BARS"`.
+  - In Compact Icon Mode, each mob nameplate header displays its active tracked spells as a horizontal row of spell icons running left-to-right beneath the header.
+  - Countdown time text is overlaid directly onto the spell icon with outline font and high-contrast backplate for maximum legibility.
+  - When a spell enters the Pandemic refresh window (< 3.0s or configured threshold), the countdown text shifts to the golden amber Pandemic color and a glowing action-button border activates around the icon.
+  - Added OptionsUI toggle button `[Mode: Timer Bars / Compact Icons]` and `Icon Size` stepper (16 - 48 px).
+  - Added slash command `/ol mode [bars|icons]` to switch display modes.
+
 ---
 
 ## [0.1.10] - 2026-11-16
