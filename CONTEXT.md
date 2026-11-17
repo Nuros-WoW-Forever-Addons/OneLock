@@ -187,6 +187,9 @@ When picking up development on this addon:
   - **Pandemic Expiring Alert (< 1 min)**: When remaining duration drops below 60 seconds, shifts bar color to golden amber with glowing spark and triggers `SOULSTONE EXPIRING SOON!` banner.
   - **Expiration Alert**: When the 30-minute stone expires, triggers `SOULSTONE EXPIRED` alert banner.
   - Integrated directly with `OneLock_Procs`'s custom alert banner via `Alerts:ShowAlert`.
+- **Audio Output & Sound Selection Hardening**:
+  - Removed 4 inaudible soft sounds (Ready Check, Auction Bell / Chime, Sonar Map Ping, Whisper Shimmer) from `OneLock_Procs` sound selector.
+  - Routed all alert playback explicitly through `"Master"` channel (`PlaySound(soundId, "Master")`) to ensure audio is clear and audible during combat.
 
 ### Spin 0.1.9 (Combat Spellcast Engine & Aura Pruning Isolation)
 - **Direct Player Spellcast Tracking (`UNIT_SPELLCAST_SUCCEEDED`)**:

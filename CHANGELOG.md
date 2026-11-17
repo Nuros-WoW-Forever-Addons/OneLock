@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Pandemic Expiring Alert (< 1 min)**: Golden amber alert banner and color shift with glowing spark when remaining time drops below 60s.
   - **Expiration Alert**: Notifies when the 30-minute stone expires.
   - Routed through `OneLock_Procs`'s custom alert banner engine.
+- **Audio Output & Sound Selection Hardening (`OneLock_Procs`)**:
+  - Pruned inaudible soft sounds (Ready Check, Auction Bell / Chime, Sonar Map Ping, and Whisper Shimmer) leaving high-clarity warning sound profiles (Alarm Clock, Raid Warning, Gong / Quest Complete, Level Up, PvP Flag Captured, and None).
+  - Explicitly routed all alert sound playback through `"Master"` audio channel (`PlaySound(soundId, "Master")`) to ensure audio alerts cut clearly through background music and game sound effects.
 
 ---
 

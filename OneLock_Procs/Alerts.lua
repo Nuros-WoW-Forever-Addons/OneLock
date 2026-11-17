@@ -48,10 +48,6 @@ end
 local SOUND_OPTIONS = {
     { name = "Alarm Clock (Default)", id = 8959 },
     { name = "Raid Warning", id = 8960 },
-    { name = "Ready Check", id = 8961 },
-    { name = "Auction Bell / Chime", id = 866 },
-    { name = "Sonar / Map Ping", id = 3175 },
-    { name = "Whisper / Shimmer", id = 843 },
     { name = "Gong / Quest Completed", id = 618 },
     { name = "Level Up", id = 888 },
     { name = "PvP Flag Captured", id = 8174 },
@@ -82,7 +78,7 @@ end
 function Alerts:PlayCurrentSound()
     local soundId = (ns.db and ns.db.soundId ~= nil) and ns.db.soundId or 8959
     if soundId and soundId > 0 then
-        pcall(PlaySound, soundId)
+        pcall(PlaySound, soundId, "Master")
     end
 end
 
@@ -268,7 +264,7 @@ function Alerts:ShowAlert(titleText, subText, iconPath, borderColor, fallbackSou
             soundToPlay = fallbackSoundId or 8959
         end
         if soundToPlay and soundToPlay > 0 then
-            pcall(PlaySound, soundToPlay)
+            pcall(PlaySound, soundToPlay, "Master")
         end
     end
 end

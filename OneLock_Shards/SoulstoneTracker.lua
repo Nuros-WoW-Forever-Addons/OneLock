@@ -337,7 +337,7 @@ local function OnSoulstoneUpdate(self, elapsed)
                 string.format("Soulstone on %s has expired.", currentSoulstone.targetName),
                 "Interface\\Icons\\Spell_Shadow_SoulGem",
                 { r = 0.70, g = 0.30, b = 0.90 },
-                843 -- Whisper / chime sound
+                618 -- Quest Complete / Gong sound
             )
         end
         currentSoulstone = nil
