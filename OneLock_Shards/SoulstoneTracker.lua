@@ -59,11 +59,15 @@ end
 -------------------------------------------------------------------------------
 -- Group Announcement Router (Raid Warning / Raid / Party / Solo)
 -------------------------------------------------------------------------------
-local function SendGroupAnnouncement(plainMsg, colorMsg)
+local function SendGroupAnnouncement(plainMsg, colorMsg, isTest)
     if colorMsg then
         ns:Print(colorMsg)
     else
         ns:Print(plainMsg)
+    end
+
+    if isTest then
+        return
     end
 
     if not (ns.db and ns.db.announceSoulstone ~= false) then
@@ -432,6 +436,10 @@ local function OnSoulstoneUpdate(self, elapsed)
                 { r = 0.70, g = 0.30, b = 0.90 },
                 618 -- Quest Complete / Gong sound
             )
+            local targetName = currentSoulstone.targetName or "Target"
+            local plainExpired = string.format("%s Soulstone EXPIRED!", targetName)
+            local colorExpired = string.format("|cffff4444%s Soulstone EXPIRED!|r", targetName)
+            SendGroupAnnouncement(plainExpired, colorExpired, currentSoulstone.isTest)
         end
         currentSoulstone = nil
         SoulstoneTracker.hud:Hide()
@@ -467,6 +475,10 @@ local function OnSoulstoneUpdate(self, elapsed)
                 { r = 1.0, g = 0.1, b = 0.1 },
                 8960 -- Raid Warning sound
             )
+            local targetName = currentSoulstone.targetName or "Target"
+            local plainDead = string.format("%s had DIED! Soulstone has %s remaining!", targetName, FormatTime(remaining))
+            local colorDead = string.format("|cffff2222%s had DIED! Soulstone has %s remaining!|r", targetName, FormatTime(remaining))
+            SendGroupAnnouncement(plainDead, colorDead, currentSoulstone.isTest)
         end
     else
         -- 3. Target Resurrected -> Soulstone Consumed
@@ -480,7 +492,7 @@ local function OnSoulstoneUpdate(self, elapsed)
             )
             local plainRes = string.format("Soulstone consumed by %s (Resurrected).", currentSoulstone.targetName)
             local colorRes = string.format("Soulstone consumed by |cffffd100%s|r (Resurrected).", currentSoulstone.targetName)
-            SendGroupAnnouncement(plainRes, colorRes)
+            SendGroupAnnouncement(plainRes, colorRes, false)
             ns:Log("INFO", "SoulstoneTracker", "Soulstone consumed upon resurrection by " .. tostring(currentSoulstone.targetName))
             currentSoulstone = nil
             SoulstoneTracker.hud:Hide()

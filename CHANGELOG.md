@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - If in a 5-man party: broadcasts via Party chat (`PARTY`).
   - If solo: prints locally to chat frame with warlock purple prefix.
   - Broadcasts when Soulstone is cast: `"<PlayerName> Soulstoned <TargetName> 30 Minute Timer Started!"`.
+  - Broadcasts when Soulstone target dies: `"<PlayerName> had DIED! Soulstone has <X> remaining!"`.
+  - Broadcasts when Soulstone expires: `"<PlayerName> Soulstone EXPIRED!"`.
   - Broadcasts when Soulstone is consumed upon resurrection: `"Soulstone consumed by <TargetName> (Resurrected)."`.
   - Added toggle checkbox in Options Panel (Section 2) and `announceSoulstone` SavedVariable.
 - **Manual Clear Support**:

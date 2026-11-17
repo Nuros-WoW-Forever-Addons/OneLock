@@ -193,6 +193,8 @@ When picking up development on this addon:
     5. If in a 5-man party (`IsInGroup()`), broadcasts via Party chat (`PARTY`).
     6. If solo, outputs locally to chat with addon prefix.
   - Broadcasts on Soulstone cast: `"<PlayerName> Soulstoned <TargetName> 30 Minute Timer Started!"`.
+  - Broadcasts on Soulstone target death: `"<PlayerName> had DIED! Soulstone has <X> remaining!"`.
+  - Broadcasts on Soulstone expiration: `"<PlayerName> Soulstone EXPIRED!"`.
   - Broadcasts on Soulstone consumption upon resurrection: `"Soulstone consumed by <TargetName> (Resurrected)."`.
   - Added toggle checkbox in OptionsUI and SavedVariable `announceSoulstone` (default: `true`).
 - **Manual Clear Support**:
