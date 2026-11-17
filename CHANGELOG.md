@@ -22,10 +22,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Protected against false resurrection triggers when dead players disconnect (`UnitIsConnected` check).
 
 ### Added
+- **Party / Raid / Raid Alert Group Messaging (`OneLock_Shards`)**:
+  - Implemented `SendGroupAnnouncement` routing engine for Soulstone events.
+  - Automatically checks Raid status first (`IsInRaid()`), then checks for Raid Alert permissions (`UnitIsGroupLeader` / `UnitIsGroupAssistant`).
+  - If in Raid with alert permissions: broadcasts via Raid Alert (`RAID_WARNING`).
+  - If in Raid without alert permissions: broadcasts via Raid chat (`RAID`).
+  - If in a 5-man party: broadcasts via Party chat (`PARTY`).
+  - If solo: prints locally to chat frame with warlock purple prefix.
+  - Broadcasts when Soulstone is cast: `"<PlayerName> Soulstoned <TargetName> 30 Minute Timer Started!"`.
+  - Broadcasts when Soulstone is consumed upon resurrection: `"Soulstone consumed by <TargetName> (Resurrected)."`.
+  - Added toggle checkbox in Options Panel (Section 2) and `announceSoulstone` SavedVariable.
 - **Manual Clear Support**:
   - Added `SoulstoneTracker:ClearSoulstone()` method.
   - Added `/olshards clear` and `/ol clear` slash commands.
   - Added `[Clear Bar]` button in OptionsUI under the Soulstone section.
+
+---
+
+## [0.1.9] - 2026-11-15
 
 ### Added
 - **Soulstone Movable Anchor & Edit Mode (`OneLock_Shards`)**:

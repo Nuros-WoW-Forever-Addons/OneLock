@@ -183,6 +183,18 @@ When picking up development on this addon:
   - Upgraded target detection to match by immutable `targetGUID` first, with fallback to `targetName` and realm-stripped short names.
   - Added secret value guards on `UnitIsDeadOrGhost` and unit GUIDs to prevent secret boolean/string errors.
   - Checked `UnitIsConnected` to prevent false resurrection triggers if a dead group member disconnects.
+- **Party / Raid / Raid Alert Group Messaging**:
+  - Implemented `SendGroupAnnouncement` routing engine for Soulstone events.
+  - Automatically evaluates group context hierarchy:
+    1. Checks Raid status first (`IsInRaid()`).
+    2. If in Raid, checks for Raid Alert permissions (`UnitIsGroupLeader` or `UnitIsGroupAssistant`).
+    3. If has permission, broadcasts via Raid Alert (`RAID_WARNING`).
+    4. If no permission, broadcasts via Raid chat (`RAID`).
+    5. If in a 5-man party (`IsInGroup()`), broadcasts via Party chat (`PARTY`).
+    6. If solo, outputs locally to chat with addon prefix.
+  - Broadcasts on Soulstone cast: `"<PlayerName> Soulstoned <TargetName> 30 Minute Timer Started!"`.
+  - Broadcasts on Soulstone consumption upon resurrection: `"Soulstone consumed by <TargetName> (Resurrected)."`.
+  - Added toggle checkbox in OptionsUI and SavedVariable `announceSoulstone` (default: `true`).
 - **Manual Clear Support**:
   - Implemented `SoulstoneTracker:ClearSoulstone()`.
   - Added `/olshards clear` and `/ol clear` slash commands.

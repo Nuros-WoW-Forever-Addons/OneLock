@@ -486,6 +486,15 @@ local function PopulateControls(content, isStandalone)
     )
     cbSSAlerts:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     table.insert(refreshables, cbSSAlerts)
+    curY = curY - 26
+
+    local cbAnnounceSS = CreateCheckbox(content, "Announce Soulstone Events to Group Chat (Raid Alert / Raid / Party)",
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.announceSoulstone ~= false) end,
+        function(v) if _G.OneLockShardsDB then _G.OneLockShardsDB.announceSoulstone = v end end,
+        nil
+    )
+    cbAnnounceSS:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbAnnounceSS)
     curY = curY - 32
 
     -- Soul Shard Inventory Cap & Auto Delete

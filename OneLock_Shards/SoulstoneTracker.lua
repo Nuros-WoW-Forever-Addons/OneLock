@@ -57,6 +57,50 @@ local function TriggerProcAlert(titleText, subText, iconPath, borderColor, fallb
 end
 
 -------------------------------------------------------------------------------
+-- Group Announcement Router (Raid Warning / Raid / Party / Solo)
+-------------------------------------------------------------------------------
+local function SendGroupAnnouncement(plainMsg, colorMsg)
+    if colorMsg then
+        ns:Print(colorMsg)
+    else
+        ns:Print(plainMsg)
+    end
+
+    if not (ns.db and ns.db.announceSoulstone ~= false) then
+        return
+    end
+
+    -- 1. Check Raid status first (party is a subset of raid)
+    local inRaid = (IsInRaid and IsInRaid())
+    local inGroup = (IsInGroup and IsInGroup())
+
+    if inRaid then
+        -- 2. Check Raid Alert permission first (not all characters can send raid alerts)
+        local canRaidAlert = false
+        if UnitIsGroupLeader and UnitIsGroupLeader("player") then
+            canRaidAlert = true
+        elseif UnitIsGroupAssistant and UnitIsGroupAssistant("player") then
+            canRaidAlert = true
+        elseif IsRaidLeader and IsRaidLeader() then
+            canRaidAlert = true
+        elseif IsRaidOfficer and IsRaidOfficer() then
+            canRaidAlert = true
+        end
+
+        if canRaidAlert then
+            local ok = pcall(SendChatMessage, plainMsg, "RAID_WARNING")
+            if not ok then
+                pcall(SendChatMessage, plainMsg, "RAID")
+            end
+        else
+            pcall(SendChatMessage, plainMsg, "RAID")
+        end
+    elseif inGroup then
+        pcall(SendChatMessage, plainMsg, "PARTY")
+    end
+end
+
+-------------------------------------------------------------------------------
 -- Target Alive / Dead Status Check
 -------------------------------------------------------------------------------
 local function CheckTargetStatus(targetName, targetGUID)
@@ -434,7 +478,9 @@ local function OnSoulstoneUpdate(self, elapsed)
                 { r = 0.20, g = 1.00, b = 0.20 },
                 618 -- Quest Complete / Gong sound
             )
-            ns:Print(string.format("Soulstone consumed by |cffffd100%s|r (Resurrected).", currentSoulstone.targetName))
+            local plainRes = string.format("Soulstone consumed by %s (Resurrected).", currentSoulstone.targetName)
+            local colorRes = string.format("Soulstone consumed by |cffffd100%s|r (Resurrected).", currentSoulstone.targetName)
+            SendGroupAnnouncement(plainRes, colorRes)
             ns:Log("INFO", "SoulstoneTracker", "Soulstone consumed upon resurrection by " .. tostring(currentSoulstone.targetName))
             currentSoulstone = nil
             SoulstoneTracker.hud:Hide()
@@ -511,7 +557,13 @@ function SoulstoneTracker:Initialize()
                 if SoulstoneTracker.hud then
                     SoulstoneTracker.hud:Show()
                 end
-                ns:Print(string.format("Soulstone stored on |cffffd100%s|r (30 minutes).", targetName))
+
+                local pName = UnitName("player") or "Player"
+                if IsSecret(pName) then pName = "Player" end
+                local plainCast = string.format("%s Soulstoned %s 30 Minute Timer Started!", pName, targetName)
+                local colorCast = string.format("|cffffd100%s|r Soulstoned |cffffd100%s|r 30 Minute Timer Started!", pName, targetName)
+                SendGroupAnnouncement(plainCast, colorCast)
+
                 ns:Log("INFO", "SoulstoneTracker", "Soulstone cast on " .. tostring(targetName))
             end
         end

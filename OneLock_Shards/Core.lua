@@ -15,6 +15,7 @@ local defaultDB = {
     autoDeleteExcess = false,
     showSoulstoneBar = true,
     enableSoulstoneAlerts = true,
+    announceSoulstone = true,
     locked = false,                     -- Movable by default
     soulstoneWidth = 180,
     soulstoneScale = 1.0,
