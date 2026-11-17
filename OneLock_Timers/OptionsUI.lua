@@ -401,7 +401,7 @@ local function PopulateControls(content, isStandalone)
     AddSectionHeader("|cff9966ffOneLock: Shards (Inventory & Soulstone)|r")
 
     -- Buttons: Move Soulstone HUD (Edit) / Reset Position / Toggle Test Bar
-    local btnMoveSS = CreateButton(content, (_G.OneLockShardsDB and _G.OneLockShardsDB.locked == false) and "Lock Soulstone HUD" or "Move Soulstone (Edit)", 160, 24, function(self)
+    local btnMoveSS = CreateButton(content, (_G.OneLockShardsDB and _G.OneLockShardsDB.locked == false) and "Lock Soulstone HUD" or "Move Soulstone (Edit)", 145, 24, function(self)
         if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ToggleLock then
             local isLocked = _G.OneLock_Shards.SoulstoneTracker:ToggleLock()
             self:SetText(isLocked and "Move Soulstone (Edit)" or "Lock Soulstone HUD")
@@ -415,20 +415,27 @@ local function PopulateControls(content, isStandalone)
     end
     table.insert(refreshables, btnMoveSS)
 
-    local btnResetSS = CreateButton(content, "Reset Position", 110, 24, function()
+    local btnResetSS = CreateButton(content, "Reset Position", 95, 24, function()
         if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ResetPosition then
             _G.OneLock_Shards.SoulstoneTracker:ResetPosition()
         end
     end)
-    btnResetSS:SetPoint("LEFT", btnMoveSS, "RIGHT", 8, 0)
+    btnResetSS:SetPoint("LEFT", btnMoveSS, "RIGHT", 6, 0)
 
-    local btnTestSS = CreateButton(content, "Toggle Test Bar", 120, 24, function()
+    local btnTestSS = CreateButton(content, "Toggle Test Bar", 105, 24, function()
         if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ToggleTestMode then
             local active = _G.OneLock_Shards.SoulstoneTracker:ToggleTestMode()
             ns:Print("Simulated Soulstone bar " .. (active and "|cff44ff44ENABLED|r." or "|cffff4444DISABLED|r."))
         end
     end)
-    btnTestSS:SetPoint("LEFT", btnResetSS, "RIGHT", 8, 0)
+    btnTestSS:SetPoint("LEFT", btnResetSS, "RIGHT", 6, 0)
+
+    local btnClearSS = CreateButton(content, "Clear Bar", 80, 24, function()
+        if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ClearSoulstone then
+            _G.OneLock_Shards.SoulstoneTracker:ClearSoulstone()
+        end
+    end)
+    btnClearSS:SetPoint("LEFT", btnTestSS, "RIGHT", 6, 0)
     curY = curY - 34
 
     -- Steppers: Soulstone Bar Width & Scale

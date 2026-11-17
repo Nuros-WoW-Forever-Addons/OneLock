@@ -9,7 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.9] - 2026-11-15
+## [0.1.10] - 2026-11-16
+
+### Fixed
+- **Soulstone Resurrection Consumption Resolution (`OneLock_Shards`)**:
+  - Resolved issue where the Soulstone HUD bar continued counting down after a player with an active Soulstone died and resurrected.
+  - Implemented target death-to-resurrection state machine tracking (`wasDead` flag).
+  - When a dead soulstone target returns to life (`status == "ALIVE"`), triggers high-visibility `SOULSTONE RESURRECTION` proc alert banner (`<targetName> resurrected! Soulstone consumed.`), plays Gong sound (`618`, Master channel), clears the tracking record, and hides the HUD bar.
+- **Enhanced Target Status Resolution (`CheckTargetStatus`)**:
+  - Added GUID-based matching (`targetGUID`) and realm-stripped short name fallback for cross-realm groups and focus/target units.
+  - Added secret value guards (`IsSecret`) on `UnitIsDeadOrGhost` and unit GUIDs to prevent secret boolean/string errors in Camelot / Midnight environments.
+  - Protected against false resurrection triggers when dead players disconnect (`UnitIsConnected` check).
+
+### Added
+- **Manual Clear Support**:
+  - Added `SoulstoneTracker:ClearSoulstone()` method.
+  - Added `/olshards clear` and `/ol clear` slash commands.
+  - Added `[Clear Bar]` button in OptionsUI under the Soulstone section.
 
 ### Added
 - **Soulstone Movable Anchor & Edit Mode (`OneLock_Shards`)**:

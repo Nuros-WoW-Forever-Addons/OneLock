@@ -110,10 +110,15 @@ local function HandleSlashCommand(msg)
             local active = ns.SoulstoneTracker:ToggleTestMode()
             ns:Print("Simulated Soulstone bar " .. (active and "|cff44ff44ENABLED|r." or "|cffff4444DISABLED|r."))
         end
+    elseif cmd == "clear" then
+        if ns.SoulstoneTracker and ns.SoulstoneTracker.ClearSoulstone then
+            ns.SoulstoneTracker:ClearSoulstone()
+        end
     else
         ns:Print("OneLock Shards commands:")
         print("  |cffffd100/olshards move|r — Toggle purple edit-mode box to position Soulstone HUD")
         print("  |cffffd100/olshards test|r — Toggle simulated Soulstone bar preview")
+        print("  |cffffd100/olshards clear|r — Clear active Soulstone tracking bar")
         print("  |cffffd100/olshards reset|r — Reset Soulstone HUD position")
         print("  |cffffd100/olshards count|r — Print current soul shard count")
         print("  |cffffd100/olshards cap <1-32>|r — Set soul shard inventory cap")

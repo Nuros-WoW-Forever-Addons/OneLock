@@ -10,7 +10,7 @@
 - **Current Version**: 0.1.1
 - **Suite**: Independent Warlock suite in the `Nuros-WoW-Forever-Addons` ecosystem
 - **GitHub Repository**:
-  - Exists: FALSE *(Will be created at `https://github.com/Nuros-WoW-Forever-Addons/OneLock`)*
+  - Exists: TRUE (`https://github.com/Nuros-WoW-Forever-Addons/OneLock`)
 - **Branching Policy**: All new features must be developed on a branch != `main` (active: `dev`)
 - **Live Sync Path**: `/Applications/World of Warcraft/_forever_/Interface/AddOns/` (Modules: `OneLock_Timers`, `OneLock_Shards`, `OneLock_Procs`)
 - **Rollback Target**: Last working `main` branch commit
@@ -173,6 +173,20 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.1.11 (Soulstone Resurrection Consumption Resolution & State Machine)
+- **Resolved Resurrection Timer Persistence**:
+  - Addressed issue where the Soulstone HUD bar continued counting down after a soulstoned target died and resurrected.
+  - Implemented `wasDead` state tracking in `currentSoulstone`. When `status == "DEAD"`, `wasDead` is marked `true`.
+  - When the unit status flips back to `"ALIVE"` (player accepts Soulstone prompt, resurrects, or is revived), `OnSoulstoneUpdate` immediately detects the resurrection, triggers `SOULSTONE RESURRECTION` alert banner (`<targetName> resurrected! Soulstone consumed.`), plays Gong sound (618, Master channel), clears the tracking session, and hides the HUD.
+- **Robust Multi-Unit Target Status (`CheckTargetStatus`)**:
+  - Upgraded target detection to match by immutable `targetGUID` first, with fallback to `targetName` and realm-stripped short names.
+  - Added secret value guards on `UnitIsDeadOrGhost` and unit GUIDs to prevent secret boolean/string errors.
+  - Checked `UnitIsConnected` to prevent false resurrection triggers if a dead group member disconnects.
+- **Manual Clear Support**:
+  - Implemented `SoulstoneTracker:ClearSoulstone()`.
+  - Added `/olshards clear` and `/ol clear` slash commands.
+  - Added `[Clear Bar]` button directly to OptionsUI in Section 2.
 
 ### Spin 0.1.10 (Soulstone Movable Anchor, Test Bar, & Event Alert Banners)
 - **Soulstone Movable Anchor & Edit Mode**:

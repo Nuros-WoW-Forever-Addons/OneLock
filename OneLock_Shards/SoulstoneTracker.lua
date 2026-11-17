@@ -59,37 +59,68 @@ end
 -------------------------------------------------------------------------------
 -- Target Alive / Dead Status Check
 -------------------------------------------------------------------------------
-local function CheckTargetStatus(targetName)
+local function CheckTargetStatus(targetName, targetGUID)
     if not targetName or IsSecret(targetName) then return "UNKNOWN" end
+
+    local function MatchesTarget(unit)
+        if not unit then return false end
+        if targetGUID then
+            local uGuid = UnitGUID(unit)
+            if uGuid and not IsSecret(uGuid) and uGuid == targetGUID then
+                return true
+            end
+        end
+        local uName = UnitName(unit)
+        if uName and not IsSecret(uName) then
+            if uName == targetName then return true end
+            local shortName = uName:match("^([^-]+)")
+            if shortName and shortName == targetName then return true end
+            local shortTarget = targetName:match("^([^-]+)")
+            if shortTarget and shortTarget == uName then return true end
+        end
+        return false
+    end
+
+    local function EvaluateUnitStatus(unit)
+        if UnitIsConnected and not UnitIsConnected(unit) then
+            return "OFFLINE"
+        end
+        local isDead = UnitIsDeadOrGhost(unit)
+        if IsSecret(isDead) then
+            return "UNKNOWN"
+        end
+        return isDead and "DEAD" or "ALIVE"
+    end
 
     -- Check party/raid units
     if IsInRaid and IsInRaid() then
         local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
         for i = 1, num do
             local unit = "raid" .. i
-            local uName = UnitName(unit)
-            if uName and not IsSecret(uName) and uName == targetName then
-                return (UnitIsDeadOrGhost(unit) and "DEAD") or "ALIVE"
+            if MatchesTarget(unit) then
+                return EvaluateUnitStatus(unit)
             end
         end
     elseif IsInGroup and IsInGroup() then
         local num = (GetNumSubgroupMembers and GetNumSubgroupMembers()) or 0
         for i = 1, num do
             local unit = "party" .. i
-            local uName = UnitName(unit)
-            if uName and not IsSecret(uName) and uName == targetName then
-                return (UnitIsDeadOrGhost(unit) and "DEAD") or "ALIVE"
+            if MatchesTarget(unit) then
+                return EvaluateUnitStatus(unit)
             end
         end
     end
 
-    local tName = UnitName("target")
-    if tName and not IsSecret(tName) and tName == targetName then
-        return (UnitIsDeadOrGhost("target") and "DEAD") or "ALIVE"
+    if MatchesTarget("target") then
+        return EvaluateUnitStatus("target")
     end
 
-    if targetName == UnitName("player") then
-        return (UnitIsDeadOrGhost("player") and "DEAD") or "ALIVE"
+    if MatchesTarget("focus") then
+        return EvaluateUnitStatus("focus")
+    end
+
+    if MatchesTarget("player") then
+        return EvaluateUnitStatus("player")
     end
 
     return "ACTIVE"
@@ -299,6 +330,7 @@ function SoulstoneTracker:ToggleTestMode()
             expirationTime = GetTime() + 1500, -- 25 minutes left
             isTest = true,
             hasAlertedDead = false,
+            wasDead = false,
             hasAlertedOneMin = false,
             hasAlertedExpired = false,
         }
@@ -314,6 +346,23 @@ function SoulstoneTracker:ToggleTestMode()
         end
     end
     return isTestMode
+end
+
+function SoulstoneTracker:ClearSoulstone()
+    if currentSoulstone then
+        local name = currentSoulstone.targetName
+        currentSoulstone = nil
+        if self.hud then
+            self.hud:Hide()
+        end
+        isTestMode = false
+        ns:Print("Soulstone tracking cleared.")
+        ns:Log("INFO", "SoulstoneTracker", "Manually cleared Soulstone tracking for " .. tostring(name))
+        return true
+    else
+        ns:Print("No active Soulstone tracking to clear.")
+        return false
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -355,13 +404,15 @@ local function OnSoulstoneUpdate(self, elapsed)
     hud.bar:SetValue(remaining)
     hud.timerText:SetText(FormatTime(remaining))
 
-    local status = CheckTargetStatus(currentSoulstone.targetName)
+    local status = CheckTargetStatus(currentSoulstone.targetName, currentSoulstone.targetGUID)
 
     -- 2. Target Dead Alert
     if status == "DEAD" then
         hud.text:SetText(string.format("|cffff2222[DEAD]|r %s", currentSoulstone.targetName))
         hud.bar:SetStatusBarColor(0.85, 0.10, 0.10, 0.95)
         hud.spark:Hide()
+
+        currentSoulstone.wasDead = true
 
         if not currentSoulstone.hasAlertedDead then
             currentSoulstone.hasAlertedDead = true
@@ -374,10 +425,23 @@ local function OnSoulstoneUpdate(self, elapsed)
             )
         end
     else
-        -- If target resurrected, reset dead alert flag so future deaths alert again
-        currentSoulstone.hasAlertedDead = false
+        -- 3. Target Resurrected -> Soulstone Consumed
+        if currentSoulstone.wasDead and not currentSoulstone.isTest and status == "ALIVE" then
+            TriggerProcAlert(
+                "|cff44ff44SOULSTONE RESURRECTION|r",
+                string.format("%s resurrected! Soulstone consumed.", currentSoulstone.targetName),
+                "Interface\\Icons\\Spell_Shadow_SoulGem",
+                { r = 0.20, g = 1.00, b = 0.20 },
+                618 -- Quest Complete / Gong sound
+            )
+            ns:Print(string.format("Soulstone consumed by |cffffd100%s|r (Resurrected).", currentSoulstone.targetName))
+            ns:Log("INFO", "SoulstoneTracker", "Soulstone consumed upon resurrection by " .. tostring(currentSoulstone.targetName))
+            currentSoulstone = nil
+            SoulstoneTracker.hud:Hide()
+            return
+        end
 
-        -- 3. Pandemic Expiring Soon Alert (< 1 minute)
+        -- 4. Pandemic Expiring Soon Alert (< 1 minute)
         if remaining <= 60 then
             hud.text:SetText(string.format("|cffffaa00%s|r", currentSoulstone.targetName))
             hud.bar:SetStatusBarColor(1.00, 0.70, 0.00, 1.00) -- Golden amber pandemic color
@@ -440,6 +504,7 @@ function SoulstoneTracker:Initialize()
                     expirationTime = GetTime() + SOULSTONE_DURATION,
                     isTest = false,
                     hasAlertedDead = false,
+                    wasDead = false,
                     hasAlertedOneMin = false,
                     hasAlertedExpired = false,
                 }

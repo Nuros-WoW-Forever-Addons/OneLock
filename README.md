@@ -52,6 +52,7 @@ OneLock includes a full graphical configuration panel available in two modes:
 ### `OneLock_Timers` (`/onelock`, `/ol`)
 - `/ol` — Display available commands and current configuration status.
 - `/ol test` — Toggle simulated multi-target test bars for visual alignment and setup.
+- `/ol clear` — Manually clear active Soulstone tracking bar.
 - `/ol unlock` — Unlock the master anchor frame to reposition the timer bars via dragging.
 - `/ol lock` — Lock the master anchor frame in place and persist coordinates.
 - `/ol reset` — Reset the master anchor frame to default screen coordinates.
@@ -62,6 +63,7 @@ OneLock includes a full graphical configuration panel available in two modes:
 ### `OneLock_Shards` (`/olshards`)
 - `/olshards move` — Toggle purple edit-mode anchor box to reposition Soulstone HUD.
 - `/olshards test` — Toggle simulated Soulstone countdown bar preview.
+- `/olshards clear` — Manually clear active Soulstone tracking bar.
 - `/olshards reset` — Reset Soulstone HUD position to default.
 - `/olshards count` — Print current soul shard inventory count.
 - `/olshards cap <1-32>` — Configure maximum soul shard retention cap (default: 24).

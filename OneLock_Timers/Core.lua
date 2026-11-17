@@ -123,6 +123,12 @@ local function HandleSlashCommand(msg)
             end
             ns:Log("DEBUG", "Commands", "Test mode toggled: " .. tostring(active))
         end
+    elseif cmd == "clear" then
+        if _G.OneLock_Shards and _G.OneLock_Shards.SoulstoneTracker and _G.OneLock_Shards.SoulstoneTracker.ClearSoulstone then
+            _G.OneLock_Shards.SoulstoneTracker:ClearSoulstone()
+        else
+            ns:Print("No active soulstone module found.")
+        end
     elseif cmd == "scale" then
         local num = tonumber(arg)
         if num and num >= 0.5 and num <= 2.0 then
