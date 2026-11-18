@@ -24,8 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated color swatch labels to reflect that they control both Bar Color and Icon Text Color (`"Normal Bar / Icon Text Color:"` and `"Pandemic Bar / Icon Text Color (< 3.0s):"`).
 - **Compact Icon Mode Visual Polish (`OneLock_Timers`)**:
   - Anchored countdown timer text below each icon at bottom center (`TOP, icon, BOTTOM, 0, -2`), preserving full artwork visibility so spells are instantly recognizable at a glance.
+  - Enclosed countdown text in a translucent black shadow box (`0, 0, 0, 0.75` backdrop + `0.20, 0.20, 0.20, 0.80` border) for crisp readability against varied terrain and background elements.
   - Dynamically scaled font size proportionally with icon size (`math.max(9, math.min(13, math.floor(size * 0.45)))`).
-  - Added vertical row clearance (`-18px` gap) when in icon mode to ensure following target headers do not overlap countdown numbers.
+  - Added vertical row clearance (`-22px` gap) when in icon mode to ensure following target headers do not overlap countdown shadow boxes.
   - Defaulted normal countdown text color to the user-configured normal bar color (Purple / `db.colorNormal`), with dynamic shift to golden amber (`db.colorPandemic`) and glowing action border during the Pandemic refresh window.
 
 ---

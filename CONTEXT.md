@@ -197,10 +197,12 @@ When picking up development on this addon:
   - Fixed `Icon Size` stepper layout overflow where controls hung off the right side of the options window.
   - Implemented `anchorAfterLabel` layout for compact steppers, anchoring `[-] [value] [+]` immediately after the `:` of `"Icon Size:"`.
   - Relabeled color swatches to indicate dual control of bars and icon text: `"Normal Bar / Icon Text Color:"` and `"Pandemic Bar / Icon Text Color (< 3.0s):"`.
-- **Compact Icon Mode Visual Polish & Bottom-Center Text (`Display.lua`)**:
-  - Moved countdown timer text to anchor directly below the icon at bottom center (`TOP, icon, BOTTOM, 0, -2`), keeping spell artwork completely unobstructed for instant recognition.
+- **Compact Icon Mode Visual Polish & Bottom-Center Shadow Box Text (`Display.lua`)**:
+  - Moved countdown timer text to anchor directly below each icon at bottom center (`TOP, icon, BOTTOM, 0, -2`), keeping spell artwork 100% unobstructed for instant recognition.
+  - Placed countdown text inside a dedicated translucent black shadow box (`0, 0, 0, 0.75` backdrop + `0.20, 0.20, 0.20, 0.80` border) for maximum readability against complex game terrain.
+  - Linked shadow box border to the Pandemic window, shifting to golden amber (`db.colorPandemic`) when under the threshold (< 3.0s).
   - Dynamically scaled text font size proportionally with icon size (`math.max(9, math.min(13, math.floor(size * 0.45)))`).
-  - Added vertical row clearance (`-18px` gap) when in icon mode to ensure following target headers do not overlap countdown numbers.
+  - Added vertical row clearance (`-22px` gap) when in icon mode to ensure following target headers do not collide with countdown shadow boxes.
   - Set normal countdown text color to the user's configured normal bar color (default Purple / `db.colorNormal`), with dynamic shift to golden amber (`db.colorPandemic`) and glowing action border during the Pandemic refresh window (< 3.0s).
 - **Exact Rank Duration Tracking & Cast Engine Hardening (`Tracker.lua`)**:
   - Resolved Corruption showing 18s instead of 12s on Rank 1 using a pure Lua `SPELL_DURATIONS_BY_ID` integer lookup table (Rank 1: 12s, Rank 2: 15s, Rank 3+: 18s).

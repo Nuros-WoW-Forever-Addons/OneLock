@@ -289,9 +289,23 @@ local function AcquireIcon()
         tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.tex = tex
 
-        -- Countdown Time Text Overlay (Anchored to bottom center below the icon)
-        local timeText = iconFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        timeText:SetPoint("TOP", iconFrame, "BOTTOM", 0, -2)
+        -- Translucent Black Shadow Box for Countdown Text
+        local textBg = CreateFrame("Frame", nil, iconFrame, "BackdropTemplate")
+        textBg:SetPoint("TOP", iconFrame, "BOTTOM", 0, -2)
+        textBg:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = false,
+            edgeSize = 8,
+            insets = { left = 1, right = 1, top = 1, bottom = 1 }
+        })
+        textBg:SetBackdropColor(0, 0, 0, 0.75) -- Translucent black shadow box
+        textBg:SetBackdropBorderColor(0.20, 0.20, 0.20, 0.80)
+        iconFrame.textBg = textBg
+
+        -- Countdown Time Text Overlay (Centered in the shadow box below the icon)
+        local timeText = textBg:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        timeText:SetPoint("CENTER", textBg, "CENTER", 0, 0)
         timeText:SetJustifyH("CENTER")
         timeText:SetShadowColor(0, 0, 0, 1)
         timeText:SetShadowOffset(1, -1)
@@ -310,11 +324,15 @@ local function AcquireIcon()
 
     local size = ns.db.iconSize or 24
     iconFrame:SetSize(size, size)
+    local boxWidth = math.max(size, 28)
+    local boxHeight = math.max(14, math.floor(size * 0.55))
+    iconFrame.textBg:SetSize(boxWidth, boxHeight)
+
     local fontPath = GameFontHighlightSmall:GetFont() or "Fonts\\FRIZQT__.TTF"
     local fontSize = math.max(9, math.min(13, math.floor(size * 0.45)))
     iconFrame.timeText:SetFont(fontPath, fontSize, "OUTLINE")
     iconFrame.timeText:ClearAllPoints()
-    iconFrame.timeText:SetPoint("TOP", iconFrame, "BOTTOM", 0, -2)
+    iconFrame.timeText:SetPoint("CENTER", iconFrame.textBg, "CENTER", 0, 0)
 
     iconFrame:Show()
     table.insert(activeIcons, iconFrame)
@@ -464,7 +482,7 @@ function Display:UpdateBars()
             if previousElement == Display.anchor then
                 header:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
             else
-                local gap = (db.displayMode == "ICONS") and -18 or -6
+                local gap = (db.displayMode == "ICONS") and -22 or -6
                 header:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, gap)
             end
 
@@ -518,7 +536,7 @@ function Display:UpdateBars()
                     end
                     rowLeader = icon
                 else
-                    icon:SetPoint("LEFT", prevIcon, "RIGHT", 6, 0)
+                    icon:SetPoint("LEFT", prevIcon, "RIGHT", 8, 0)
                 end
 
                 icon.timerData = timer
@@ -533,10 +551,12 @@ function Display:UpdateBars()
                     icon.timeText:SetTextColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
                     if icon.glow then icon.glow:Show() end
                     icon:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
+                    if icon.textBg then icon.textBg:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 0.85) end
                 else
                     icon.timeText:SetTextColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, 1.0)
                     if icon.glow then icon.glow:Hide() end
                     icon:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
+                    if icon.textBg then icon.textBg:SetBackdropBorderColor(0.20, 0.20, 0.20, 0.80) end
                 end
 
                 prevIcon = icon
@@ -658,10 +678,12 @@ local function OnDisplayFrameUpdate(self, elapsed)
                     icon.timeText:SetTextColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
                     if icon.glow then icon.glow:Show() end
                     icon:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
+                    if icon.textBg then icon.textBg:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 0.85) end
                 else
                     icon.timeText:SetTextColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, 1.0)
                     if icon.glow then icon.glow:Hide() end
                     icon:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
+                    if icon.textBg then icon.textBg:SetBackdropBorderColor(0.20, 0.20, 0.20, 0.80) end
                 end
             end
         end
