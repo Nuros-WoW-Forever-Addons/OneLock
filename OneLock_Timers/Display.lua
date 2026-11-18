@@ -289,9 +289,9 @@ local function AcquireIcon()
         tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.tex = tex
 
-        -- Countdown Time Text Overlay (Centered on the icon)
+        -- Countdown Time Text Overlay (Anchored to bottom center below the icon)
         local timeText = iconFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        timeText:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
+        timeText:SetPoint("TOP", iconFrame, "BOTTOM", 0, -2)
         timeText:SetJustifyH("CENTER")
         timeText:SetShadowColor(0, 0, 0, 1)
         timeText:SetShadowOffset(1, -1)
@@ -311,10 +311,10 @@ local function AcquireIcon()
     local size = ns.db.iconSize or 24
     iconFrame:SetSize(size, size)
     local fontPath = GameFontHighlightSmall:GetFont() or "Fonts\\FRIZQT__.TTF"
-    local fontSize = math.max(8, math.floor(size * 0.50))
+    local fontSize = math.max(9, math.min(13, math.floor(size * 0.45)))
     iconFrame.timeText:SetFont(fontPath, fontSize, "OUTLINE")
     iconFrame.timeText:ClearAllPoints()
-    iconFrame.timeText:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
+    iconFrame.timeText:SetPoint("TOP", iconFrame, "BOTTOM", 0, -2)
 
     iconFrame:Show()
     table.insert(activeIcons, iconFrame)
@@ -464,7 +464,8 @@ function Display:UpdateBars()
             if previousElement == Display.anchor then
                 header:SetPoint("TOPLEFT", Display.anchor, "TOPLEFT", 0, 0)
             else
-                header:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, -6)
+                local gap = (db.displayMode == "ICONS") and -18 or -6
+                header:SetPoint("TOPLEFT", previousElement, "BOTTOMLEFT", 0, gap)
             end
 
             local rawName = target.name
@@ -517,7 +518,7 @@ function Display:UpdateBars()
                     end
                     rowLeader = icon
                 else
-                    icon:SetPoint("LEFT", prevIcon, "RIGHT", 4, 0)
+                    icon:SetPoint("LEFT", prevIcon, "RIGHT", 6, 0)
                 end
 
                 icon.timerData = timer

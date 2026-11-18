@@ -38,42 +38,48 @@ local function GetSpellDetails(spellID)
 end
 
 -------------------------------------------------------------------------------
--- Warlock Spell Database & Definitions
+-- Warlock Spell Database & Rank Duration Mapping
 -------------------------------------------------------------------------------
 local TRACKED_SPELLS = {}
 
-local SPELL_CATALOG = {
-    -- SpellID, BaseDuration, Category, FallbackName
-    -- Corruption (Rank 1 is 12s, Rank 2 is 15s, Rank 3+ is 18s)
-    { 172,   12, "DOT",   "Corruption" }, -- Rank 1 (Level 4)
-    { 6222,  15, "DOT",   "Corruption" }, -- Rank 2 (Level 14)
-    { 6223,  18, "DOT",   "Corruption" }, -- Rank 3 (Level 24)
-    { 7648,  18, "DOT",   "Corruption" }, -- Rank 4 (Level 34)
-    { 11671, 18, "DOT",   "Corruption" }, -- Rank 5 (Level 44)
-    { 11672, 18, "DOT",   "Corruption" }, -- Rank 6 (Level 54)
-    { 25311, 18, "DOT",   "Corruption" }, -- Rank 7 (Level 60)
-    { 27216, 18, "DOT",   "Corruption" }, -- Rank 8 (Level 70)
+-- Exact duration lookup by rank spellID (bypasses missing/secret aura durations)
+local SPELL_DURATIONS_BY_ID = {
+    -- Corruption (Rank 1: 12s, Rank 2: 15s, Rank 3+: 18s)
+    [172]   = 12, -- Rank 1 (Level 4)
+    [6222]  = 15, -- Rank 2 (Level 14)
+    [6223]  = 18, -- Rank 3 (Level 24)
+    [7648]  = 18, -- Rank 4 (Level 34)
+    [11671] = 18, -- Rank 5 (Level 44)
+    [11672] = 18, -- Rank 6 (Level 54)
+    [25311] = 18, -- Rank 7 (Level 60)
+    [27216] = 18, -- Rank 8 (Level 70)
 
-    -- Fear (Rank 1 is 10s, Rank 2 is 15s, Rank 3 is 20s)
-    { 5782,  10, "CC",    "Fear" },       -- Rank 1 (Level 8)
-    { 6213,  15, "CC",    "Fear" },       -- Rank 2 (Level 20)
-    { 6215,  20, "CC",    "Fear" },       -- Rank 3 (Level 40)
+    -- Fear (Rank 1: 10s, Rank 2: 15s, Rank 3: 20s)
+    [5782]  = 10, -- Rank 1 (Level 8)
+    [6213]  = 15, -- Rank 2 (Level 20)
+    [6215]  = 20, -- Rank 3 (Level 40)
 
-    -- Banish (Rank 1 is 20s, Rank 2 is 30s)
-    { 710,   20, "CC",    "Banish" },     -- Rank 1 (Level 28)
-    { 18647, 30, "CC",    "Banish" },     -- Rank 2 (Level 48)
+    -- Banish (Rank 1: 20s, Rank 2: 30s)
+    [710]   = 20, -- Rank 1 (Level 28)
+    [18647] = 30, -- Rank 2 (Level 48)
 
     -- Howl of Terror
-    { 5484,  10, "CC",    "Howl of Terror" }, -- Rank 1 (Level 40)
-    { 17928, 15, "CC",    "Howl of Terror" }, -- Rank 2 (Level 54)
+    [5484]  = 10, -- Rank 1 (Level 40)
+    [17928] = 15, -- Rank 2 (Level 54)
 
     -- Death Coil
-    { 6789,   3, "CC",    "Death Coil" },
+    [6789]  = 3,
+    [17925] = 3,
+    [17926] = 3,
+    [27223] = 3,
 
-    -- Seduction (Succubus)
-    { 6358,  15, "CC",    "Seduction" },
+    -- Seduction
+    [6358]  = 15,
+}
 
-    -- Other DoTs & Curses
+local SPELL_CATALOG = {
+    -- SpellID, DefaultDuration, Category, FallbackName
+    { 172,   12, "DOT",   "Corruption" },
     { 30108, 15, "DOT",   "Unstable Affliction" },
     { 980,   24, "CURSE", "Curse of Agony" },
     { 603,   60, "CURSE", "Curse of Doom" },
@@ -84,6 +90,11 @@ local SPELL_CATALOG = {
     { 18265, 30, "DOT",   "Siphon Life" },
     { 348,   15, "DOT",   "Immolate" },
     { 27243, 18, "DOT",   "Seed of Corruption" },
+    { 710,   20, "CC",    "Banish" },
+    { 5782,  10, "CC",    "Fear" },
+    { 5484,  10, "CC",    "Howl of Terror" },
+    { 6789,   3, "CC",    "Death Coil" },
+    { 6358,  15, "CC",    "Seduction" },
 }
 
 local function InitSpellCatalog()
@@ -92,29 +103,13 @@ local function InitSpellCatalog()
         local name, icon = GetSpellDetails(id)
         name = name or fallbackName
         if name then
-            local entry = {
+            TRACKED_SPELLS[name] = {
                 spellId = id,
                 name = name,
                 duration = baseDuration,
                 icon = icon or "",
                 category = category,
             }
-            -- Key by exact spellId
-            TRACKED_SPELLS[id] = entry
-
-            -- Determine player-known rank for name-based lookup
-            local isKnown = false
-            if IsPlayerSpell and IsPlayerSpell(id) then
-                isKnown = true
-            elseif IsSpellKnown and IsSpellKnown(id) then
-                isKnown = true
-            end
-
-            if isKnown then
-                TRACKED_SPELLS[name] = entry
-            elseif not TRACKED_SPELLS[name] then
-                TRACKED_SPELLS[name] = entry
-            end
         end
     end
 
@@ -245,9 +240,10 @@ local function ScanUnit(unit)
         -- Only track debuffs cast by the player
         local hasDuration = duration and not IsSecret(duration) and duration > 0
         local isPlayerSource = (sourceUnit == "player") or (sourceUnit == nil and hasDuration)
-        if isPlayerSource and name and not IsSecret(name) and (TRACKED_SPELLS[name] or (spellId and not IsSecret(spellId) and TRACKED_SPELLS[spellId])) then
-            local spellDef = (spellId and not IsSecret(spellId) and TRACKED_SPELLS[spellId]) or TRACKED_SPELLS[name]
-            local effDuration = hasDuration and duration or spellDef.duration
+        if isPlayerSource and name and not IsSecret(name) and TRACKED_SPELLS[name] then
+            local spellDef = TRACKED_SPELLS[name]
+            local rankDur = (spellId and not IsSecret(spellId) and SPELL_DURATIONS_BY_ID[spellId])
+            local effDuration = (hasDuration and duration) or rankDur or spellDef.duration
             local hasExp = expirationTime and not IsSecret(expirationTime) and expirationTime > 0
             local effExpiration = hasExp and expirationTime or (now + effDuration)
             local effIcon = icon or spellDef.icon
@@ -283,10 +279,15 @@ local function ScanUnit(unit)
     -- If aura scanning was blocked by combat secret taint, keep active timers running!
     if anyAurasRead and ns.activeTimers[guid] then
         local removedAny = false
-        for activeName, _ in pairs(ns.activeTimers[guid].spells) do
+        for activeName, activeTimer in pairs(ns.activeTimers[guid].spells) do
             if not foundSpells[activeName] then
-                ns.activeTimers[guid].spells[activeName] = nil
-                removedAny = true
+                -- 1.5s grace period: Never prune a spell that was cast within the last 1.5s
+                -- to allow network/aura latency before it registers in UnitDebuff
+                local age = now - (activeTimer.startTime or 0)
+                if age > 1.5 then
+                    ns.activeTimers[guid].spells[activeName] = nil
+                    removedAny = true
+                end
             end
         end
 
@@ -335,14 +336,10 @@ local function OnPlayerSpellcastSucceeded(spellID)
     local spellName, icon = GetSpellDetails(spellID)
     if not spellName or IsSecret(spellName) then return end
 
-    local spellDef = (spellID and TRACKED_SPELLS[spellID]) or TRACKED_SPELLS[spellName]
+    local spellDef = TRACKED_SPELLS[spellName]
     if not spellDef then return end
 
-    -- Keep name-based duration in sync with the exact rank cast
-    if spellName and TRACKED_SPELLS[spellName] then
-        TRACKED_SPELLS[spellName].duration = spellDef.duration
-        TRACKED_SPELLS[spellName].spellId = spellDef.spellId
-    end
+    local effDuration = (SPELL_DURATIONS_BY_ID and SPELL_DURATIONS_BY_ID[spellID]) or spellDef.duration
 
     local targetGUID = lastCastTargetGUID or UnitGUID("target")
     local targetName = lastCastTargetName or UnitName("target")
@@ -351,7 +348,6 @@ local function OnPlayerSpellcastSucceeded(spellID)
     if not targetName or IsSecret(targetName) then targetName = "Target" end
 
     local now = GetTime()
-    local effDuration = spellDef.duration
     local effExpiration = now + effDuration
     local effIcon = (icon and icon ~= "") and icon or spellDef.icon
 
@@ -436,16 +432,12 @@ function Tracker:Initialize()
     trackerFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
     trackerFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     trackerFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    trackerFrame:RegisterEvent("SPELLS_CHANGED")
-    trackerFrame:RegisterEvent("LEARNED_SPELL_IN_TAB")
 
     trackerFrame:SetScript("OnEvent", function(self, event, unit, arg2, arg3, arg4)
         if event == "UNIT_AURA" then
             if unit then
                 ScanUnit(unit)
             end
-        elseif event == "SPELLS_CHANGED" or event == "LEARNED_SPELL_IN_TAB" then
-            InitSpellCatalog()
         elseif event == "PLAYER_TARGET_CHANGED" then
             if UnitExists("target") and UnitIsDead("target") then
                 local guid = UnitGUID("target")
@@ -486,7 +478,6 @@ function Tracker:Initialize()
             if spellID then
                 OnPlayerSpellcastSucceeded(spellID)
             end
-            ScanUnit("target")
         elseif event == "PLAYER_REGEN_ENABLED" then
             ns.playerGUID = UnitGUID("player")
         end
