@@ -7,7 +7,7 @@ local addonName, ns = ...
 _G.OneLock_Timers = ns
 
 ns.addonName = addonName
-ns.version = "0.1.0"
+ns.version = "0.1.11"
 
 -- Database Defaults
 local defaultDB = {

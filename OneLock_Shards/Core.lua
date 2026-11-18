@@ -7,7 +7,7 @@ local addonName, ns = ...
 _G.OneLock_Shards = ns
 
 ns.addonName = addonName
-ns.version = "0.1.1"
+ns.version = "0.1.11"
 
 local defaultDB = {
     version = 2,

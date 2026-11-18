@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Suite**: OneLock (Modular Warlock Suite)
-- **Current Version**: 0.1.1
+- **Current Version**: 0.1.11
 - **Suite**: Independent Warlock suite in the `Nuros-WoW-Forever-Addons` ecosystem
 - **GitHub Repository**:
   - Exists: TRUE (`https://github.com/Nuros-WoW-Forever-Addons/OneLock`)
