@@ -3,6 +3,7 @@
 ## Notes: High-visibility proc alerts (Shadow Trance, Backlash) and CC immunity alerts for Warlocks on WoW Forever.
 ## Author: Nuros
 ## Version: 0.1.1
+## IconTexture: Interface\Icons\Spell_Shadow_Twilight
 ## SavedVariables: OneLockProcsDB
 ## OptionalDeps: OneSwatter
 

@@ -187,6 +187,26 @@ When picking up development on this addon:
 - **Branch Policy Notice**:
   - Kept exclusively on `dev` branch for live testing per user instructions; not merged to `main` until verified.
 
+### Spin 0.1.12 (Compact Icon Mode Polish, TOC Icon Textures, OneAddon Chat Routing & Corruption Duration Fix)
+- **Addon Menu Icons in TOC manifests (`All Modules`)**:
+  - Added `## IconTexture` to `OneLock_Timers.toc`, `OneLock_Shards.toc`, and `OneLock_Procs.toc`, replacing default red question marks with high-res warlock spell icons in the Game Menu -> AddOns list.
+- **Dedicated Chat Frame Routing (`GetOneAddonChatFrame`)**:
+  - Standardized local output across `OneLock_Timers`, `OneLock_Shards`, and `OneLock_Procs` to route via `GetOneAddonChatFrame()` into the `"OneAddon"` or `"OneAddons"` chat tab (matching `OneFish` pattern), falling back to `DEFAULT_CHAT_FRAME`.
+  - Preserved group chat routing (Party, Raid, Raid Warning) for combat-critical Soulstone announcements.
+- **Options UI Layout & Stepper Alignment (`OptionsUI.lua`)**:
+  - Fixed `Icon Size` stepper layout overflow where controls hung off the right side of the options window.
+  - Implemented `anchorAfterLabel` layout for compact steppers, anchoring `[-] [value] [+]` immediately after the `:` of `"Icon Size:"`.
+  - Relabeled color swatches to indicate dual control of bars and icon text: `"Normal Bar / Icon Text Color:"` and `"Pandemic Bar / Icon Text Color (< 3.0s):"`.
+- **Compact Icon Mode Visual Polish (`Display.lua`)**:
+  - Centered countdown timer text directly on the spell icons (`CENTER, 0, 0`).
+  - Removed bottom dark backplate bar (`fontBg`).
+  - Dynamically scaled text font size proportionally with icon size (`math.max(8, math.floor(size * 0.50))`).
+  - Set normal countdown text color to the user's configured normal bar color (default Purple / `db.colorNormal`), with dynamic shift to golden amber (`db.colorPandemic`) and glowing action border during the Pandemic refresh window (< 3.0s).
+- **Exact Rank Duration Tracking & Corruption Fix (`Tracker.lua`)**:
+  - Resolved Corruption showing 18s instead of 12s on Rank 1.
+  - Cataloged all ranks of spells with duration varying by rank: Corruption (Rank 1: 12s, Rank 2: 15s, Rank 3+: 18s), Fear (Rank 1: 10s, Rank 2: 15s, Rank 3: 20s), Banish (Rank 1: 20s, Rank 2: 30s), Howl of Terror, Death Coil, and Seduction.
+  - Upgraded tracker to index by both exact `spellId` and `spellName`, prioritizing exact rank cast duration and auto-syncing player-known rank on `SPELLS_CHANGED`.
+
 ### Spin 0.1.11 (Soulstone Resurrection Consumption Resolution & State Machine)
 - **Resolved Resurrection Timer Persistence**:
   - Addressed issue where the Soulstone HUD bar continued counting down after a soulstoned target died and resurrected.

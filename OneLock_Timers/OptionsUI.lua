@@ -94,24 +94,31 @@ local function CreateCheckbox(parent, labelText, getValue, setValue, onChange)
     return cb
 end
 
-local function CreateStepper(parent, labelText, minVal, maxVal, step, getter, setter, formatStr, onChange)
+local function CreateStepper(parent, labelText, minVal, maxVal, step, getter, setter, formatStr, onChange, anchorAfterLabel)
     local container = CreateFrame("Frame", nil, parent)
-    container:SetSize(340, 26)
+    container:SetSize(anchorAfterLabel and 240 or 340, 26)
 
     local label = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     label:SetPoint("LEFT", container, "LEFT", 0, 0)
     label:SetText(labelText)
 
     local btnMinus = CreateButton(container, "-", 24, 22, nil)
-    btnMinus:SetPoint("RIGHT", container, "RIGHT", -110, 0)
-
     local valText = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    valText:SetPoint("LEFT", btnMinus, "RIGHT", 6, 0)
-    valText:SetPoint("RIGHT", container, "RIGHT", -32, 0)
     valText:SetJustifyH("CENTER")
 
     local btnPlus = CreateButton(container, "+", 24, 22, nil)
-    btnPlus:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+
+    if anchorAfterLabel then
+        btnMinus:SetPoint("LEFT", label, "RIGHT", 8, 0)
+        valText:SetPoint("LEFT", btnMinus, "RIGHT", 4, 0)
+        valText:SetWidth(48)
+        btnPlus:SetPoint("LEFT", valText, "RIGHT", 4, 0)
+    else
+        btnMinus:SetPoint("RIGHT", container, "RIGHT", -110, 0)
+        valText:SetPoint("LEFT", btnMinus, "RIGHT", 6, 0)
+        valText:SetPoint("RIGHT", container, "RIGHT", -32, 0)
+        btnPlus:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    end
 
     local function UpdateVal(newVal)
         newVal = math.max(minVal, math.min(maxVal, newVal))
@@ -140,7 +147,7 @@ end
 
 local function CreateColorSwatch(parent, labelText, getter, setter, onChange)
     local container = CreateFrame("Frame", nil, parent)
-    container:SetSize(280, 24)
+    container:SetSize(360, 24)
 
     local label = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     label:SetPoint("LEFT", container, "LEFT", 0, 0)
@@ -327,9 +334,10 @@ local function PopulateControls(content, isStandalone)
         function() return (ns.db and ns.db.iconSize) or 24 end,
         function(v) if ns.db then ns.db.iconSize = v end end,
         "%d px",
-        function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
+        function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end,
+        true
     )
-    stepIconSize:SetPoint("TOPLEFT", content, "TOPLEFT", 190, curY)
+    stepIconSize:SetPoint("LEFT", btnMode, "RIGHT", 14, 0)
     table.insert(refreshables, stepIconSize)
     curY = curY - 32
 
@@ -404,7 +412,7 @@ local function PopulateControls(content, isStandalone)
     curY = curY - 32
 
     -- Color Swatches: Normal & Pandemic Color
-    local swatchNormal = CreateColorSwatch(content, "Normal Bar Color:",
+    local swatchNormal = CreateColorSwatch(content, "Normal Bar / Icon Text Color:",
         function() return (ns.db and ns.db.colorNormal) or { r = 0.60, g = 0.20, b = 0.85 } end,
         function(c) if ns.db then ns.db.colorNormal = c end end,
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end
@@ -413,7 +421,7 @@ local function PopulateControls(content, isStandalone)
     table.insert(refreshables, swatchNormal)
     curY = curY - 28
 
-    local swatchPandemic = CreateColorSwatch(content, "Pandemic Color (< 3.0s):",
+    local swatchPandemic = CreateColorSwatch(content, "Pandemic Bar / Icon Text Color (< 3.0s):",
         function() return (ns.db and ns.db.colorPandemic) or { r = 1.00, g = 0.82, b = 0.00 } end,
         function(c) if ns.db then ns.db.colorPandemic = c end end,
         function() if ns.Display and ns.Display.ApplyDisplaySettings then ns.Display:ApplyDisplaySettings() end end

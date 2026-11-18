@@ -289,23 +289,12 @@ local function AcquireIcon()
         tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.tex = tex
 
-        -- Semi-transparent dark background band for high contrast overlay
-        local fontBg = iconFrame:CreateTexture(nil, "OVERLAY")
-        fontBg:SetPoint("BOTTOMLEFT", iconFrame, "BOTTOMLEFT", 1, 1)
-        fontBg:SetPoint("BOTTOMRIGHT", iconFrame, "BOTTOMRIGHT", -1, 1)
-        fontBg:SetHeight(12)
-        fontBg:SetTexture("Interface\\Buttons\\WHITE8x8")
-        fontBg:SetVertexColor(0, 0, 0, 0.65)
-        iconFrame.fontBg = fontBg
-
-        -- Countdown Time Text Overlay
+        -- Countdown Time Text Overlay (Centered on the icon)
         local timeText = iconFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        timeText:SetPoint("BOTTOM", iconFrame, "BOTTOM", 0, 1)
-        local fontPath, fontSize = timeText:GetFont()
-        if fontPath then
-            timeText:SetFont(fontPath, math.max(9, (fontSize or 10)), "OUTLINE")
-        end
+        timeText:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
         timeText:SetJustifyH("CENTER")
+        timeText:SetShadowColor(0, 0, 0, 1)
+        timeText:SetShadowOffset(1, -1)
         iconFrame.timeText = timeText
 
         -- Glowing Pandemic Action Border
@@ -321,6 +310,12 @@ local function AcquireIcon()
 
     local size = ns.db.iconSize or 24
     iconFrame:SetSize(size, size)
+    local fontPath = GameFontHighlightSmall:GetFont() or "Fonts\\FRIZQT__.TTF"
+    local fontSize = math.max(8, math.floor(size * 0.50))
+    iconFrame.timeText:SetFont(fontPath, fontSize, "OUTLINE")
+    iconFrame.timeText:ClearAllPoints()
+    iconFrame.timeText:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
+
     iconFrame:Show()
     table.insert(activeIcons, iconFrame)
     return iconFrame
@@ -357,7 +352,7 @@ function Display:ToggleTestMode()
                         spellName = "Corruption",
                         spellId = 172,
                         icon = GetSpellTextureSafe(172, "Interface\\Icons\\Spell_Shadow_AbominationExplosion"),
-                        duration = 18,
+                        duration = 12,
                         expirationTime = now + 2.5, -- In Pandemic window (< 3.0s)
                     },
                     ["Unstable Affliction"] = {
@@ -386,8 +381,8 @@ function Display:ToggleTestMode()
                         spellName = "Corruption",
                         spellId = 172,
                         icon = GetSpellTextureSafe(172, "Interface\\Icons\\Spell_Shadow_AbominationExplosion"),
-                        duration = 18,
-                        expirationTime = now + 14.5,
+                        duration = 12,
+                        expirationTime = now + 9.5,
                     },
                     ["Fear"] = {
                         spellName = "Fear",
@@ -538,7 +533,7 @@ function Display:UpdateBars()
                     if icon.glow then icon.glow:Show() end
                     icon:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
                 else
-                    icon.timeText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+                    icon.timeText:SetTextColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, 1.0)
                     if icon.glow then icon.glow:Hide() end
                     icon:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
                 end
@@ -663,7 +658,7 @@ local function OnDisplayFrameUpdate(self, elapsed)
                     if icon.glow then icon.glow:Show() end
                     icon:SetBackdropBorderColor(db.colorPandemic.r, db.colorPandemic.g, db.colorPandemic.b, 1.0)
                 else
-                    icon.timeText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+                    icon.timeText:SetTextColor(db.colorNormal.r, db.colorNormal.g, db.colorNormal.b, 1.0)
                     if icon.glow then icon.glow:Hide() end
                     icon:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.9)
                 end

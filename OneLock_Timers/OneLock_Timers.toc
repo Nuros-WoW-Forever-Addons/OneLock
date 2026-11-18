@@ -3,6 +3,7 @@
 ## Notes: Multi-target raid DoT and CC timer engine for Warlocks on WoW Forever.
 ## Author: Nuros
 ## Version: 0.1.0
+## IconTexture: Interface\Icons\Spell_Shadow_AbominationExplosion
 ## SavedVariables: OneLockTimersDB
 ## OptionalDeps: OneSwatter
 

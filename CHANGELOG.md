@@ -8,13 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Compact Icon Mode Configuration (`OneLock_Timers`)**:
-  - Added new display configuration mode: `displayMode = "ICONS"` alongside traditional `displayMode = "BARS"`.
-  - In Compact Icon Mode, each mob nameplate header displays its active tracked spells as a horizontal row of spell icons running left-to-right beneath the header.
-  - Countdown time text is overlaid directly onto the spell icon with outline font and high-contrast backplate for maximum legibility.
-  - When a spell enters the Pandemic refresh window (< 3.0s or configured threshold), the countdown text shifts to the golden amber Pandemic color and a glowing action-button border activates around the icon.
-  - Added OptionsUI toggle button `[Mode: Timer Bars / Compact Icons]` and `Icon Size` stepper (16 - 48 px).
-  - Added slash command `/ol mode [bars|icons]` to switch display modes.
+- **Addon Menu Icons (`All Modules`)**:
+  - Added `## IconTexture` to all three manifests (`OneLock_Timers.toc`, `OneLock_Shards.toc`, `OneLock_Procs.toc`), replacing default red question marks with high-resolution warlock ability icons in the Game Menu AddOns list.
+- **Dedicated Chat Frame Routing (`OneAddon`)**:
+  - Routed all local addon notifications and slash command status outputs across `OneLock_Timers`, `OneLock_Shards`, and `OneLock_Procs` to the dedicated `OneAddon` / `OneAddons` chat frame tab, matching the workspace standard (`OneFish`).
+  - Preserved Party, Raid, and Raid Alert channels for combat-critical Soulstone announcements.
+- **Dynamic Rank Duration Tracking & Corruption Fix (`OneLock_Timers`)**:
+  - Resolved Corruption showing 18s instead of 12s on Rank 1.
+  - Implemented exact rank duration catalog for spells with duration varying by rank: Corruption (Rank 1: 12s, Rank 2: 15s, Rank 3+: 18s), Fear (Rank 1: 10s, Rank 2: 15s, Rank 3: 20s), Banish (Rank 1: 20s, Rank 2: 30s), Howl of Terror, Death Coil, and Seduction.
+  - Tracker indexes both by exact `spellId` and `spellName`, prioritizing exact rank cast duration and auto-syncing player-known rank on `SPELLS_CHANGED`.
+
+### Changed
+- **Options UI Layout & Stepper Alignment (`OneLock_Timers`)**:
+  - Fixed `Icon Size` stepper layout being pushed off the right edge of the options dialog; implemented inline `anchorAfterLabel` layout where `[-] [value] [+]` controls sit immediately after the `:` of `"Icon Size:"`.
+  - Updated color swatch labels to reflect that they control both Bar Color and Icon Text Color (`"Normal Bar / Icon Text Color:"` and `"Pandemic Bar / Icon Text Color (< 3.0s):"`).
+- **Compact Icon Mode Visual Polish (`OneLock_Timers`)**:
+  - Removed bottom dark backplate band (`fontBg`).
+  - Centered countdown timer text directly in the center of the spell icon (`CENTER, 0, 0`).
+  - Dynamically scaled font size proportionally with icon size (`math.max(8, math.floor(size * 0.50))`).
+  - Defaulted normal countdown text color to the user-configured normal bar color (Purple / `db.colorNormal`), with dynamic shift to golden amber (`db.colorPandemic`) and glowing action border during the Pandemic refresh window.
 
 ---
 

@@ -3,6 +3,7 @@
 ## Notes: Soul Shard inventory management and Soulstone duration tracking for Warlocks on WoW Forever.
 ## Author: Nuros
 ## Version: 0.1.1
+## IconTexture: Interface\Icons\Spell_Shadow_SoulGem
 ## SavedVariables: OneLockShardsDB
 ## OptionalDeps: OneSwatter
 

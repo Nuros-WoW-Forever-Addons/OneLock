@@ -35,11 +35,62 @@ local defaultDB = {
 }
 
 -------------------------------------------------------------------------------
--- Print & OneSwatter Logging Integration
+-- Print & OneAddon Chat Frame Routing
 -------------------------------------------------------------------------------
+local function GetOneAddonChatFrame()
+    local targetName = "OneAddon"
+    for i = 1, (NUM_CHAT_WINDOWS or 10) do
+        local name = GetChatWindowInfo(i)
+        if name == targetName or name == "OneAddons" then
+            local cf = _G["ChatFrame" .. i]
+            if cf then
+                local tab = _G["ChatFrame" .. i .. "Tab"]
+                if tab then
+                    tab:Show()
+                    if PanelTemplates_TabResize then
+                        pcall(PanelTemplates_TabResize, tab, 0)
+                    end
+                end
+                return cf
+            end
+        end
+    end
+    if FCF_OpenNewWindow then
+        local frame = FCF_OpenNewWindow(targetName)
+        if frame then
+            if FCF_DockFrame and GENERAL_CHAT_DOCK then
+                local docked = (FCFDock_GetChatFrames and FCFDock_GetChatFrames(GENERAL_CHAT_DOCK)) or (GENERAL_CHAT_DOCK and GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES) or {}
+                pcall(FCF_DockFrame, frame, #docked + 1, false)
+            end
+            if ChatFrame_RemoveAllMessageGroups then pcall(ChatFrame_RemoveAllMessageGroups, frame) end
+            if ChatFrame_RemoveAllChannels then pcall(ChatFrame_RemoveAllChannels, frame) end
+            if FCF_DockUpdate then pcall(FCF_DockUpdate) end
+            local id = frame.GetID and frame:GetID()
+            if id then
+                local tab = _G["ChatFrame" .. id .. "Tab"]
+                if tab then
+                    tab:Show()
+                    if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
+                end
+            end
+            if FCF_SelectDockFrame and DEFAULT_CHAT_FRAME then pcall(FCF_SelectDockFrame, DEFAULT_CHAT_FRAME) end
+            return frame
+        end
+    end
+    return DEFAULT_CHAT_FRAME or ChatFrame1
+end
+
 function ns:Print(msg)
+    local frame = GetOneAddonChatFrame()
     local prefix = "|cff9966ff[OneLock:Timers]|r "
-    print(prefix .. tostring(msg))
+    local text = prefix .. tostring(msg)
+    if frame and frame.AddMessage then
+        frame:AddMessage(text)
+    elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+        DEFAULT_CHAT_FRAME:AddMessage(text)
+    else
+        print(text)
+    end
 end
 
 function ns:Log(level, category, message, extraData)
