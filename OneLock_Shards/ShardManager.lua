@@ -127,15 +127,88 @@ function ShardManager:CleanupExcessShards()
     -- without being blocked. We safely alert the player without triggering protected call taint.
     if currentShardCount ~= lastAlertedShardCount then
         lastAlertedShardCount = currentShardCount
-        ns:Print(string.format("Soul Shard cap exceeded: |cffffd100%d/%d|r (%d excess). Blizzard UI security restricts automated item deletion; please discard excess shards manually.", currentShardCount, maxShards, excessCount))
+        ns:Print(string.format("Soul Shard cap exceeded: |cffffd100%d/%d|r (%d excess). Use |cffffd100/click OneLockPurgeShards|r or Options button to purge.", currentShardCount, maxShards, excessCount))
         ns:Log("WARNING", "ShardManager", string.format("Shard cap exceeded (%d/%d). Automated DeleteCursorItem is protected by Blizzard.", currentShardCount, maxShards))
     end
+end
+
+-------------------------------------------------------------------------------
+-- 1-Click Hardware Purge Routine & Macro Button (/click OneLockPurgeShards)
+-------------------------------------------------------------------------------
+function ShardManager:PurgeOneExcessShard()
+    if InCombatLockdown() then
+        ns:Print("Cannot purge Soul Shards in combat.")
+        return false
+    end
+
+    -- If an item is already held on the cursor, delete it
+    if CursorHasItem() then
+        local ok, err = pcall(DeleteCursorItem)
+        ClearCursor()
+        self:ScanBags()
+        if ok then
+            ns:Print("Purged item on cursor.")
+            return true
+        else
+            ns:Print("Blizzard engine prevented deletion: " .. tostring(err))
+            return false
+        end
+    end
+
+    local maxShards = (ns.db and ns.db.maxShards) or 24
+    local count = self:ScanBags()
+    if count <= maxShards then
+        ns:Print(string.format("No excess Soul Shards to purge (|cffffd100%d/%d|r).", count, maxShards))
+        return false
+    end
+
+    -- Find the last excess Soul Shard (highest bag, highest slot)
+    local loc = nil
+    for i = #self.shardLocations, 1, -1 do
+        local candidate = self.shardLocations[i]
+        local itemId = GetItemID(candidate.bag, candidate.slot)
+        if itemId == SOUL_SHARD_ITEM_ID then
+            loc = candidate
+            break
+        end
+    end
+
+    if not loc then return false end
+
+    ClearCursor()
+    PickupItem(loc.bag, loc.slot)
+    if CursorHasItem() then
+        local ok, err = pcall(DeleteCursorItem)
+        ClearCursor()
+        local newCount = self:ScanBags()
+        if ok then
+            ns:Print(string.format("Purged 1 excess Soul Shard. Remaining: |cffffd100%d/%d|r.", newCount, maxShards))
+            return true
+        else
+            ns:Print("Blizzard engine prevented deletion: " .. tostring(err))
+            return false
+        end
+    end
+
+    return false
+end
+
+local function CreatePurgeButton()
+    if _G.OneLockPurgeShards then return end
+    local btn = CreateFrame("Button", "OneLockPurgeShards", UIParent, "SecureActionButtonTemplate")
+    btn:RegisterForClicks("AnyUp", "AnyDown")
+    btn:SetScript("OnClick", function(self)
+        ShardManager:PurgeOneExcessShard()
+    end)
+    ShardManager.purgeButton = btn
 end
 
 -------------------------------------------------------------------------------
 -- Event Handling
 -------------------------------------------------------------------------------
 function ShardManager:Initialize()
+    CreatePurgeButton()
+
     local eventFrame = CreateFrame("Frame", "OneLock_Shards_ManagerFrame")
     eventFrame:RegisterEvent("BAG_UPDATE")
     eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")

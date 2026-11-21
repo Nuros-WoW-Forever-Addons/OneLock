@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **1-Click Hardware Purge Button & Macro Target (`OneLock_Shards`)**:
+  - Implemented secure hardware button `OneLockPurgeShards` and macro target (`/click OneLockPurgeShards`) to safely purge 1 excess Soul Shard per physical keypress or mouse click outside of combat.
+  - Added "Purge 1 Excess Shard Now" button to Options UI and `/olshards purge` slash command.
+
 ### Fixed
 - **Protected Action Immunity for Soul Shard Cleanup (`OneLock_Shards/ShardManager.lua`)**:
   - Eliminated `Protected function call blocked: AddOn 'OneLock_Shards' attempted to call 'DeleteCursorItem()'` error triggered on bag updates when shard inventory exceeded the configured cap.

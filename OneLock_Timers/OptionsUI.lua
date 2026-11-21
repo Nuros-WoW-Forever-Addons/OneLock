@@ -555,9 +555,9 @@ local function PopulateControls(content, isStandalone)
     table.insert(refreshables, cbAutoDelete)
     curY = curY - 30
 
-    local btnClean = CreateButton(content, "Check Excess Shards Now", 200, 24, function()
+    local btnClean = CreateButton(content, "Purge 1 Excess Shard Now", 200, 24, function()
         if _G.OneLock_Shards and _G.OneLock_Shards.ShardManager then
-            _G.OneLock_Shards.ShardManager:CleanupExcessShards()
+            _G.OneLock_Shards.ShardManager:PurgeOneExcessShard()
         end
     end)
     btnClean:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)

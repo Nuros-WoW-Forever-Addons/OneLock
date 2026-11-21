@@ -143,9 +143,9 @@ local function HandleSlashCommand(msg)
             ns:Print("Auto-deletion of excess soul shards |cffff4444DISABLED|r.")
         end
         ns:Log("INFO", "Settings", "Auto-delete toggled: " .. tostring(ns.db.autoDeleteExcess))
-    elseif cmd == "cleanup" then
-        if ns.ShardManager and ns.ShardManager.CleanupExcessShards then
-            ns.ShardManager:CleanupExcessShards()
+    elseif cmd == "cleanup" or cmd == "purge" then
+        if ns.ShardManager and ns.ShardManager.PurgeOneExcessShard then
+            ns.ShardManager:PurgeOneExcessShard()
         end
     elseif cmd == "move" or cmd == "lock" or cmd == "unlock" then
         if ns.SoulstoneTracker and ns.SoulstoneTracker.ToggleLock then
@@ -174,8 +174,9 @@ local function HandleSlashCommand(msg)
         print("  |cffffd100/olshards reset|r — Reset Soulstone HUD position")
         print("  |cffffd100/olshards count|r — Print current soul shard count")
         print("  |cffffd100/olshards cap <1-32>|r — Set soul shard inventory cap")
-        print("  |cffffd100/olshards autodelete|r — Toggle out-of-combat auto deletion")
-        print("  |cffffd100/olshards cleanup|r — Manually delete shards above cap now")
+        print("  |cffffd100/olshards autodelete|r — Toggle out-of-combat cap alert")
+        print("  |cffffd100/olshards purge|r — Purge 1 excess soul shard now")
+        print("  |cffffd100/click OneLockPurgeShards|r — Macro keybind command to purge 1 excess shard")
     end
 end
 
