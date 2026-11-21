@@ -123,6 +123,7 @@ OneLockShardsDB = {
     autoDeleteExcess = false,          -- Out-of-combat cap alert when inventory exceeds maxShards
     autoSortShards = false,            -- Automatically sort Soul Shards to designated bag slot out of combat
     sortTargetBag = 4,                 -- Designated bag slot for Soul Shards (0 = Backpack, 4 = Leftmost Bag)
+    autoCreatePurgeMacro = false,      -- Auto-create character-specific #showtooltip Soul Shard /click OneLockPurgeShards macro for Warlocks
     showSoulstoneBar = true,           -- Display 30-minute soulstone expiration bar
     enableSoulstoneAlerts = true,      -- Visual alert banners for Soulstone events
     announceSoulstone = true,          -- Group announcements (Party, Raid, Raid Warning)
@@ -178,7 +179,7 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
-### Spin 0.1.14 (Soul Shard Auto-Sorting & Bag Slot Targeting)
+### Spin 0.1.14 (Soul Shard Auto-Sorting, Bag Slot Targeting & Character Purge Macro Auto-Creation)
 - **Soul Shard Auto-Sort Engine (`ShardManager.lua`)**:
   - Implemented `ShardManager:SortShards(explicitTargetBag)`:
     - Scans player inventory for Soul Shards (`SOUL_SHARD_ITEM_ID = 6265`) located outside the target bag slot.
@@ -187,6 +188,19 @@ When picking up development on this addon:
     - Validates that cursor is empty (`CursorHasItem()`), player is out of combat (`not InCombatLockdown()`), and uses an `isSorting` re-entrancy lock to prevent event loops.
     - If in combat when triggered, queues action via `pendingSort = true` and flushes automatically on `PLAYER_REGEN_ENABLED`.
   - Added event-driven auto-sorting listening on `BAG_UPDATE_DELAYED` when `autoSortShards = true`.
+- **Character Purge Macro Auto-Creation (`ShardManager.lua`)**:
+  - Implemented `ShardManager:CheckAndCreatePurgeMacro(verbose)`:
+    - Checks character class (`UnitClass("player") == "WARLOCK"`); skips execution for non-Warlocks.
+    - Checks combat state (`not InCombatLockdown()`); queues for `PLAYER_REGEN_ENABLED` if triggered during combat.
+    - Verifies character macro capacity (`MAX_CHARACTER_MACROS or 18`).
+    - Automatically creates or updates character-specific macro `PurgeShard` with body:
+      ```text
+      #showtooltip Soul Shard
+      /click OneLockPurgeShards
+      ```
+    - Uses icon `INV_MISC_QUESTIONMARK` (`134400`) to dynamically display Soul Shard icon and tooltip on action bars.
+  - Added checkbox: `"Auto-create Purge Macro under Character Macros (Warlock)"` and button: `[Create / Update Purge Macro Now]`.
+  - Added slash command `/olshards macro` to toggle auto-creation and immediately run macro check.
 - **Options UI & Slash Commands**:
   - Added checkbox: `"Auto-sort Soul Shards to designated bag"` in Options Panel Section 2.
   - Added stepper: `"Target Bag Slot:"` (0 = Backpack, 1-3 = Bags 1-3, 4 = Bag 4 Leftmost/Soul Bag) using inline formatted stepper display.
@@ -195,6 +209,7 @@ When picking up development on this addon:
     - `/olshards autosort` — Toggle auto-sorting on bag updates.
     - `/olshards bag <0-4>` — Set designated bag slot.
     - `/olshards sort` (or `sortnow`) — Execute an immediate inventory sort to the target bag out of combat.
+    - `/olshards macro` — Toggle character purge macro auto-creation.
 
 ### Spin 0.1.12 (Compact Icon Mode Configuration — Active on Dev Branch)
 - **Compact Horizontal Spell Icon Configuration (`displayMode = "ICONS"`)**:

@@ -609,6 +609,30 @@ local function PopulateControls(content, isStandalone)
         end
     end)
     btnSortNow:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    curY = curY - 34
+
+    -- Auto-create character-specific purge macro (Warlock)
+    local cbAutoMacro = CreateCheckbox(content, "Auto-create Purge Macro under Character Macros (Warlock)",
+        function() return _G.OneLockShardsDB and _G.OneLockShardsDB.autoCreatePurgeMacro end,
+        function(v)
+            if _G.OneLockShardsDB then _G.OneLockShardsDB.autoCreatePurgeMacro = v end
+            if _G.OneLock_Shards and _G.OneLock_Shards.db then _G.OneLock_Shards.db.autoCreatePurgeMacro = v end
+            if v and _G.OneLock_Shards and _G.OneLock_Shards.ShardManager then
+                _G.OneLock_Shards.ShardManager:CheckAndCreatePurgeMacro(true)
+            end
+        end,
+        nil
+    )
+    cbAutoMacro:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbAutoMacro)
+    curY = curY - 30
+
+    local btnCreateMacro = CreateButton(content, "Create / Update Purge Macro Now", 220, 24, function()
+        if _G.OneLock_Shards and _G.OneLock_Shards.ShardManager then
+            _G.OneLock_Shards.ShardManager:CheckAndCreatePurgeMacro(true)
+        end
+    end)
+    btnCreateMacro:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     curY = curY - 40
 
     -- ========================================================================

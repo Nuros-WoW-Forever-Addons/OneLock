@@ -291,10 +291,99 @@ function ShardManager:SortShards(explicitTargetBag)
 end
 
 -------------------------------------------------------------------------------
+-- Auto-Create Character Purge Macro (#showtooltip Soul Shard /click OneLockPurgeShards)
+-------------------------------------------------------------------------------
+local PURGE_MACRO_NAME = "PurgeShard"
+local PURGE_MACRO_BODY = "#showtooltip Soul Shard\n/click OneLockPurgeShards"
+local PURGE_MACRO_ICON = "INV_MISC_QUESTIONMARK"
+local pendingMacro = false
+
+function ShardManager:CheckAndCreatePurgeMacro(verbose)
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        if verbose then
+            ns:Print("Macro creation skipped: Character is not a Warlock.")
+        end
+        return false, "Not a Warlock"
+    end
+
+    if InCombatLockdown() then
+        pendingMacro = true
+        if verbose then
+            ns:Print("Cannot create or update macros during combat (queued for combat exit).")
+        end
+        return false, "In combat"
+    end
+
+    if not CreateMacro or not GetMacroIndexByName then
+        if verbose then
+            ns:Print("Macro API not available on this client.")
+        end
+        return false, "Macro API unavailable"
+    end
+
+    local existingIndex = GetMacroIndexByName(PURGE_MACRO_NAME)
+    if existingIndex and existingIndex > 0 then
+        -- Macro already exists; verify and update body if needed
+        local currentName, currentIcon, currentBody = GetMacroInfo(existingIndex)
+        if currentBody ~= PURGE_MACRO_BODY then
+            local ok, err = pcall(EditMacro, existingIndex, PURGE_MACRO_NAME, PURGE_MACRO_ICON, PURGE_MACRO_BODY)
+            if ok then
+                if verbose then
+                    ns:Print(string.format("Updated character macro |cffffd100#%s|r.", PURGE_MACRO_NAME))
+                end
+                ns:Log("INFO", "ShardManager", "Updated existing macro: " .. PURGE_MACRO_NAME)
+                return true
+            else
+                if verbose then
+                    ns:Print("Failed to update macro: " .. tostring(err))
+                end
+                return false, err
+            end
+        else
+            if verbose then
+                ns:Print(string.format("Character macro |cffffd100#%s|r already exists and is up to date.", PURGE_MACRO_NAME))
+            end
+            return true
+        end
+    end
+
+    -- Create new character-specific macro
+    local numAccount, numCharacter = GetNumMacros()
+    local maxCharMacros = (MAX_CHARACTER_MACROS or 18)
+    if numCharacter and numCharacter >= maxCharMacros then
+        if verbose then
+            ns:Print(string.format("Cannot create macro: Character macro slots are full (%d/%d).", numCharacter, maxCharMacros))
+        end
+        return false, "Character macro slots full"
+    end
+
+    local ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, PURGE_MACRO_ICON, PURGE_MACRO_BODY, 1)
+    if not ok or not res then
+        ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, PURGE_MACRO_ICON, PURGE_MACRO_BODY, true)
+    end
+
+    if ok and res and res > 0 then
+        ns:Print(string.format("Created character-specific macro |cffffd100#%s|r.", PURGE_MACRO_NAME))
+        ns:Log("INFO", "ShardManager", "Created character macro: " .. PURGE_MACRO_NAME)
+        return true
+    else
+        if verbose then
+            ns:Print("Failed to create macro: " .. tostring(res))
+        end
+        return false, res
+    end
+end
+
+-------------------------------------------------------------------------------
 -- Event Handling
 -------------------------------------------------------------------------------
 function ShardManager:Initialize()
     CreatePurgeButton()
+
+    if ns.db and ns.db.autoCreatePurgeMacro then
+        ShardManager:CheckAndCreatePurgeMacro(false)
+    end
 
     local eventFrame = CreateFrame("Frame", "OneLock_Shards_ManagerFrame")
     eventFrame:RegisterEvent("BAG_UPDATE")
@@ -315,6 +404,12 @@ function ShardManager:Initialize()
                 pendingSort = false
                 if ns.db and ns.db.autoSortShards then
                     ShardManager:SortShards()
+                end
+            end
+            if pendingMacro then
+                pendingMacro = false
+                if ns.db and ns.db.autoCreatePurgeMacro then
+                    ShardManager:CheckAndCreatePurgeMacro(false)
                 end
             end
         end

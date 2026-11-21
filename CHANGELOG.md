@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Character-Specific Purge Macro Auto-Creation (`OneLock_Shards`)**:
+  - Implemented `ShardManager:CheckAndCreatePurgeMacro(verbose)`:
+    - Safely checks player class (`UnitClass("player") == "WARLOCK"`).
+    - Checks out-of-combat safety (`not InCombatLockdown()`), queueing on combat exit if triggered during encounters.
+    - Creates or updates character-specific macro `PurgeShard` under the character macros tab:
+      ```text
+      #showtooltip Soul Shard
+      /click OneLockPurgeShards
+      ```
+    - Added UI checkbox `"Auto-create Purge Macro under Character Macros (Warlock)"` and button `[Create / Update Purge Macro Now]`.
+    - Added `/olshards macro` slash command to toggle auto-creation and trigger immediate execution.
 - **Soul Shard Auto-Sort to Designated Bag (`OneLock_Shards`)**:
   - Implemented `ShardManager:SortShards(explicitTargetBag)` to automatically identify Soul Shards located outside the target bag and move them into available empty slots in the designated bag.
   - Defaults to Bag 4 (the leftmost bag container, commonly reserved for Soul Bags / Felcloth Bags).

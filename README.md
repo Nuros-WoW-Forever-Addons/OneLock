@@ -71,6 +71,7 @@ OneLock includes a full graphical configuration panel available in two modes:
 - `/olshards autosort` — Toggle auto-sorting soul shards into designated bag slot.
 - `/olshards bag <0-4>` — Set target bag slot (0 = Backpack, 4 = Leftmost Bag / Soul Pouch).
 - `/olshards sort` — Sort Soul Shards into designated bag now.
+- `/olshards macro` — Toggle auto-creation of `#showtooltip Soul Shard /click OneLockPurgeShards` macro under Character Macros (Warlock).
 - `/olshards purge` — Purge 1 excess soul shard now out of combat.
 - `/click OneLockPurgeShards` — Secure hardware macro command to purge 1 excess shard per click.
 

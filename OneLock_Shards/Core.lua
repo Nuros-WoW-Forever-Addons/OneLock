@@ -15,6 +15,7 @@ local defaultDB = {
     autoDeleteExcess = false,
     autoSortShards = false,
     sortTargetBag = 4,                  -- Bag 4 (Leftmost / Soul Bag)
+    autoCreatePurgeMacro = false,       -- Auto-create character-specific macro for Warlocks
     showSoulstoneBar = true,
     enableSoulstoneAlerts = true,
     announceSoulstone = true,
@@ -166,6 +167,17 @@ local function HandleSlashCommand(msg)
         if ns.ShardManager and ns.ShardManager.SortShards then
             ns.ShardManager:SortShards()
         end
+    elseif cmd == "macro" then
+        ns.db.autoCreatePurgeMacro = not ns.db.autoCreatePurgeMacro
+        if ns.db.autoCreatePurgeMacro then
+            ns:Print("Auto-create Purge Macro |cff44ff44ENABLED|r.")
+            if ns.ShardManager and ns.ShardManager.CheckAndCreatePurgeMacro then
+                ns.ShardManager:CheckAndCreatePurgeMacro(true)
+            end
+        else
+            ns:Print("Auto-create Purge Macro |cffff4444DISABLED|r.")
+        end
+        ns:Log("INFO", "Settings", "Auto-create macro toggled: " .. tostring(ns.db.autoCreatePurgeMacro))
     elseif cmd == "cleanup" or cmd == "purge" then
         if ns.ShardManager and ns.ShardManager.PurgeOneExcessShard then
             ns.ShardManager:PurgeOneExcessShard()
@@ -201,6 +213,7 @@ local function HandleSlashCommand(msg)
         print("  |cffffd100/olshards autosort|r — Toggle auto-sorting shards into target bag")
         print("  |cffffd100/olshards bag <0-4>|r — Set target bag slot (0 = Backpack, 4 = Leftmost)")
         print("  |cffffd100/olshards sort|r — Sort Soul Shards into designated bag now")
+        print("  |cffffd100/olshards macro|r — Toggle auto-creation of character purge macro")
         print("  |cffffd100/olshards purge|r — Purge 1 excess soul shard now")
         print("  |cffffd100/click OneLockPurgeShards|r — Macro keybind command to purge 1 excess shard")
     end
