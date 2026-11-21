@@ -5,6 +5,15 @@ All notable changes to the **OneLock** addon suite will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Dungeon / Instance Combat Secret String Immunity (`Tracker.lua`, `Display.lua`)**:
+  - Fixed fatal Lua error `attempt to compare local 'target' (a secret string value, while execution tainted by 'OneLock_Timers')` in `UNIT_SPELLCAST_SENT` when casting DoTs in dungeons and instances.
+  - Implemented `SafeNameMatch` with `IsSecret` and `pcall` guards for target, focus, and mouseover tokens.
+  - Protected `sourceUnit == "player"` debuff comparisons and wrapped aura callback dispatches in `pcall`.
+  - Added `IsSameGUID` helper to eliminate secret string comparisons during target sorting and rendering in `Display:UpdateBars()`.
+
 ## [0.1.11] - 2026-11-17
 
 ### Added

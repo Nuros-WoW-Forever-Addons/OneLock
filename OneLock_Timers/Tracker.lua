@@ -143,7 +143,7 @@ local function ForEachUnitDebuff(unit, callback)
             local ok, aura = pcall(C_UnitAuras.GetDebuffDataByIndex, unit, i)
             if not ok or not aura then break end
             if not (IsSecret(aura.name) or IsSecret(aura.spellId)) then
-                callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+                pcall(callback, aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
             end
             i = i + 1
         end
@@ -157,7 +157,7 @@ local function ForEachUnitDebuff(unit, callback)
             local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HARMFUL")
             if not ok or not aura then break end
             if not (IsSecret(aura.name) or IsSecret(aura.spellId)) then
-                callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+                pcall(callback, aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
             end
             i = i + 1
         end
@@ -168,7 +168,7 @@ local function ForEachUnitDebuff(unit, callback)
     if AuraUtil and AuraUtil.ForEachAura then
         pcall(AuraUtil.ForEachAura, unit, "HARMFUL", nil, function(aura)
             if aura and not (IsSecret(aura.name) or IsSecret(aura.spellId)) then
-                callback(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+                pcall(callback, aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
             end
         end)
         return
@@ -181,7 +181,7 @@ local function ForEachUnitDebuff(unit, callback)
             local ok, name, icon, count, debuffType, duration, expirationTime, unitCaster, _, _, spellId = pcall(_G.UnitDebuff, unit, i)
             if not ok or not name then break end
             if not (IsSecret(name) or IsSecret(spellId)) then
-                callback(name, icon, count, duration, expirationTime, unitCaster, spellId)
+                pcall(callback, name, icon, count, duration, expirationTime, unitCaster, spellId)
             end
             i = i + 1
         end
@@ -239,7 +239,13 @@ local function ScanUnit(unit)
 
         -- Only track debuffs cast by the player
         local hasDuration = duration and not IsSecret(duration) and duration > 0
-        local isPlayerSource = (sourceUnit == "player") or (sourceUnit == nil and hasDuration)
+        local isPlayerSource = false
+        if sourceUnit and not IsSecret(sourceUnit) then
+            local okEq, eq = pcall(function() return sourceUnit == "player" end)
+            isPlayerSource = okEq and eq
+        elseif sourceUnit == nil and hasDuration then
+            isPlayerSource = true
+        end
         if isPlayerSource and name and not IsSecret(name) and TRACKED_SPELLS[name] then
             local spellDef = TRACKED_SPELLS[name]
             local rankDur = (spellId and not IsSecret(spellId) and SPELL_DURATIONS_BY_ID[spellId])
@@ -315,18 +321,36 @@ end
 local lastCastTargetName = nil
 local lastCastTargetGUID = nil
 
+local function SafeNameMatch(unitToken, targetName)
+    if not targetName or IsSecret(targetName) then return false end
+    local ok, uName = pcall(UnitName, unitToken)
+    if not ok or not uName or IsSecret(uName) then return false end
+    local okEq, isEq = pcall(function() return uName == targetName end)
+    return okEq and isEq
+end
+
 local function OnSpellcastSent(unit, target, castGUID, spellID)
     if unit == "player" then
-        lastCastTargetName = target
-        local curTargetName = UnitName("target")
-        if target and curTargetName and not IsSecret(curTargetName) and curTargetName == target then
+        if target and not IsSecret(target) then
+            lastCastTargetName = target
+        else
+            lastCastTargetName = nil
+        end
+
+        if SafeNameMatch("target", target) then
             lastCastTargetGUID = UnitGUID("target")
-        elseif target and UnitName("focus") == target then
+        elseif SafeNameMatch("focus", target) then
             lastCastTargetGUID = UnitGUID("focus")
-        elseif target and UnitName("mouseover") == target then
+        elseif SafeNameMatch("mouseover", target) then
+            lastCastTargetGUID = UnitGUID("mouseover")
+        elseif UnitExists("target") and not IsSecret(UnitExists("target")) then
+            lastCastTargetGUID = UnitGUID("target")
+        elseif UnitExists("focus") and not IsSecret(UnitExists("focus")) then
+            lastCastTargetGUID = UnitGUID("focus")
+        elseif UnitExists("mouseover") and not IsSecret(UnitExists("mouseover")) then
             lastCastTargetGUID = UnitGUID("mouseover")
         else
-            lastCastTargetGUID = UnitGUID("target")
+            lastCastTargetGUID = nil
         end
     end
 end

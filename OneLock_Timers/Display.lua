@@ -434,6 +434,13 @@ function Display:UpdateBars()
         currentTargetGUID = nil
     end
 
+    local function IsSameGUID(guidA, guidB)
+        if not guidA or not guidB then return false end
+        if issecretvalue and (issecretvalue(guidA) or issecretvalue(guidB)) then return false end
+        local ok, match = pcall(function() return guidA == guidB end)
+        return ok and match
+    end
+
     -- Choose data source (test mode vs active combat data)
     local sourceData = (ns.isTestMode and testTimerCache) or ns.activeTimers
     if not sourceData then return end
@@ -456,12 +463,14 @@ function Display:UpdateBars()
 
     -- Sort: current target always at the top, then by most recently updated
     table.sort(targetList, function(a, b)
-        local aIsTarget = (currentTargetGUID and a.guid == currentTargetGUID) or (a.isTarget == true)
-        local bIsTarget = (currentTargetGUID and b.guid == currentTargetGUID) or (b.isTarget == true)
+        local aIsTarget = IsSameGUID(currentTargetGUID, a.guid) or (a.isTarget == true)
+        local bIsTarget = IsSameGUID(currentTargetGUID, b.guid) or (b.isTarget == true)
         if aIsTarget ~= bIsTarget then
             return aIsTarget
         end
-        return (a.lastSeen or 0) > (b.lastSeen or 0)
+        local aSeen = (not issecretvalue or not issecretvalue(a.lastSeen)) and (a.lastSeen or 0) or 0
+        local bSeen = (not issecretvalue or not issecretvalue(b.lastSeen)) and (b.lastSeen or 0) or 0
+        return aSeen > bSeen
     end)
 
     local previousElement = Display.anchor
@@ -472,7 +481,7 @@ function Display:UpdateBars()
         if targetsShown >= maxTargets then break end
         targetsShown = targetsShown + 1
 
-        local isCurrentTarget = (currentTargetGUID and target.guid == currentTargetGUID) or (target.isTarget == true)
+        local isCurrentTarget = IsSameGUID(currentTargetGUID, target.guid) or (target.isTarget == true)
 
         -- 1. Create Target Header Frame
         local header = nil

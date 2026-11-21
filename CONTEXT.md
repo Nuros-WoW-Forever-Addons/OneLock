@@ -187,6 +187,19 @@ When picking up development on this addon:
 - **Branch Policy Notice**:
   - Kept exclusively on `dev` branch for live testing per user instructions; not merged to `main` until verified.
 
+### Spin 0.1.13 (Dungeon Secret String Immunity & Spellcast Sent Hardening)
+- **Resolved Fatal Secret String Error on Spellcast (`Tracker.lua:326`)**:
+  - Root cause: In instances/dungeons under combat taint, `target` in `UNIT_SPELLCAST_SENT` can be passed as an engine secret string value. Evaluating string equality (`curTargetName == target`, `UnitName("focus") == target`, `UnitName("mouseover") == target`) without secret value validation caused fatal Lua errors (`attempt to compare local 'target' (a secret string value, while execution tainted by 'OneLock_Timers')`).
+  - Implemented `SafeNameMatch(unitToken, targetName)` with `IsSecret` checks and `pcall` protected comparison.
+  - Guarded `lastCastTargetName` to never store secret strings.
+  - Added fallback routing to `UnitExists("target")`, `UnitExists("focus")`, and `UnitExists("mouseover")` when target names are secret.
+- **Debuff Callback & Caster Secret Protection**:
+  - Wrapped `ForEachUnitDebuff` callback invocations in `pcall` across all four aura enumeration paths.
+  - Hardened `sourceUnit == "player"` comparison against secret string values with `pcall` and `IsSecret` checks.
+- **Display Target Comparison Hardening (`Display.lua`)**:
+  - Implemented `IsSameGUID(guidA, guidB)` with `issecretvalue` and `pcall` guards to eliminate comparison errors during target sorting and rendering in combat.
+  - Guarded `lastSeen` timestamp comparisons in `table.sort`.
+
 ### Spin 0.1.12 (Compact Icon Mode Polish, TOC Icon Textures, OneAddon Chat Routing & Corruption Duration Fix)
 - **Addon Menu Icons in TOC manifests (`All Modules`)**:
   - Added `## IconTexture` to `OneLock_Timers.toc`, `OneLock_Shards.toc`, and `OneLock_Procs.toc`, replacing default red question marks with high-res warlock spell icons in the Game Menu -> AddOns list.
