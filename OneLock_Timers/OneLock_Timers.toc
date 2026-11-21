@@ -2,7 +2,7 @@
 ## Title: OneLock: Timers
 ## Notes: Multi-target raid DoT and CC timer engine for Warlocks on WoW Forever.
 ## Author: Nuros
-## Version: 0.1.11
+## Version: 0.1.12
 ## IconTexture: Interface\Icons\Spell_Shadow_AbominationExplosion
 ## SavedVariables: OneLockTimersDB
 ## OptionalDeps: OneSwatter
