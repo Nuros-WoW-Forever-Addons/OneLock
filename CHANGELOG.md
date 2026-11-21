@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Secret Key Table Indexing Immunity (`OneLock_Timers/Tracker.lua`, `Display.lua`)**:
+  - Fixed fatal Lua error `attempted to index a table that cannot be indexed with secret keys` occurring in combat when indexing `ns.activeTimers` with secret enemy GUIDs.
+  - Implemented `GetSafeUnitKey(unit, fallbackGUID)` guaranteeing table lookups and insertions strictly use non-secret string keys or unit tokens (`"target"`, `"nameplate1"`, etc.).
+  - Added support for `target.key == "target"` in `Display.lua` for current target sorting and header tagging.
+- **ShardManager Stack Overflow Recursion (`OneLock_Shards/ShardManager.lua`)**:
+  - Fixed fatal `stack overflow` error caused by `ScanBags()` recursively calling `QueueCleanup()` while `CleanupExcessShards()` was processing shard deletions.
+  - Added `isCleaningUp` re-entrancy lock to isolate cleanup scans from triggering additional purge cycles.
 - **Combat & Dungeon Timer Generation Restoration (`Tracker.lua`)**:
   - Restored active DoT timer generation in dungeons and combat by removing over-aggressive secret value guards that previously aborted tracking:
     - In `OnPlayerSpellcastSucceeded`, ensured `targetGUID` falls back to `UnitGUID("target")` and never returns prematurely on `IsSecret(targetGUID)`.

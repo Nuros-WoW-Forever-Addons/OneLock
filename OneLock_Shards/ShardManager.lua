@@ -50,6 +50,8 @@ end
 -------------------------------------------------------------------------------
 -- Scan Bags for Soul Shards
 -------------------------------------------------------------------------------
+local isCleaningUp = false
+
 function ShardManager:ScanBags()
     local count = 0
     local shardLocations = {} -- list of { bag = bag, slot = slot }
@@ -71,9 +73,9 @@ function ShardManager:ScanBags()
     currentShardCount = count
     ShardManager.shardLocations = shardLocations
 
-    -- Check if auto-cleanup is enabled and cap is exceeded
+    -- Check if auto-cleanup is enabled and cap is exceeded (prevent recursive re-entry)
     local maxShards = (ns.db and ns.db.maxShards) or 24
-    if ns.db and ns.db.autoDeleteExcess and count > maxShards then
+    if not isCleaningUp and ns.db and ns.db.autoDeleteExcess and count > maxShards then
         self:QueueCleanup()
     end
 
@@ -96,17 +98,20 @@ function ShardManager:QueueCleanup()
 end
 
 function ShardManager:CleanupExcessShards()
+    if isCleaningUp then return end
     if InCombatLockdown() then
         pendingCleanup = true
         ns:Print("Cannot delete soul shards during combat. Scheduled for combat end.")
         return
     end
 
+    isCleaningUp = true
     local maxShards = (ns.db and ns.db.maxShards) or 24
     self:ScanBags()
 
     if currentShardCount <= maxShards then
         pendingCleanup = false
+        isCleaningUp = false
         return
     end
 
@@ -130,6 +135,7 @@ function ShardManager:CleanupExcessShards()
     end
 
     pendingCleanup = false
+    isCleaningUp = false
     ns:Print(string.format("Purged |cffffd100%d|r excess Soul Shard(s). Current count: %d", deleted, currentShardCount - deleted))
     ns:Log("INFO", "ShardManager", string.format("Deleted %d excess Soul Shards (Remaining: %d)", deleted, currentShardCount - deleted))
 end

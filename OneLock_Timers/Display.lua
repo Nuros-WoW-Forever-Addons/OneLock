@@ -447,7 +447,7 @@ function Display:UpdateBars()
 
     -- Extract and sort target entries
     local targetList = {}
-    for guid, target in pairs(sourceData) do
+    for key, target in pairs(sourceData) do
         local hasSpells = false
         for _ in pairs(target.spells) do
             hasSpells = true
@@ -455,6 +455,7 @@ function Display:UpdateBars()
         end
 
         if hasSpells then
+            target.key = key
             table.insert(targetList, target)
         end
     end
@@ -463,8 +464,8 @@ function Display:UpdateBars()
 
     -- Sort: current target always at the top, then by most recently updated
     table.sort(targetList, function(a, b)
-        local aIsTarget = IsSameGUID(currentTargetGUID, a.guid) or (a.isTarget == true)
-        local bIsTarget = IsSameGUID(currentTargetGUID, b.guid) or (b.isTarget == true)
+        local aIsTarget = (a.key == "target") or (a.isTarget == true) or IsSameGUID(currentTargetGUID, a.guid)
+        local bIsTarget = (b.key == "target") or (b.isTarget == true) or IsSameGUID(currentTargetGUID, b.guid)
         if aIsTarget ~= bIsTarget then
             return aIsTarget
         end
@@ -481,7 +482,7 @@ function Display:UpdateBars()
         if targetsShown >= maxTargets then break end
         targetsShown = targetsShown + 1
 
-        local isCurrentTarget = IsSameGUID(currentTargetGUID, target.guid) or (target.isTarget == true)
+        local isCurrentTarget = (target.key == "target") or (target.isTarget == true) or IsSameGUID(currentTargetGUID, target.guid)
 
         -- 1. Create Target Header Frame
         local header = nil

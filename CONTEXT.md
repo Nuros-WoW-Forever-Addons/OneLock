@@ -187,7 +187,15 @@ When picking up development on this addon:
 - **Branch Policy Notice**:
   - Kept exclusively on `dev` branch for live testing per user instructions; not merged to `main` until verified.
 
-### Spin 0.1.13 (Dungeon Secret String Immunity, Timer Restoration & Combat Hardening)
+### Spin 0.1.13 (Dungeon Secret String Immunity, Secret Table Indexing Protection & Shard Recursion Fix)
+- **Resolved Fatal Secret Key Table Indexing Errors (`Tracker.lua:209, 223, 237, 525`, `Display.lua`)**:
+  - Root cause: In combat/dungeons, the engine marks enemy `UnitGUID` returns as secret values. Standard Lua tables (`ns.activeTimers = {}`) cannot be indexed with secret keys in WoW Forever (`attempted to index a table that cannot be indexed with secret keys`).
+  - Implemented `GetSafeUnitKey(unit, fallbackGUID)` which extracts non-secret GUIDs when available, and strictly falls back to safe string literals (`unit` or `"target"`, e.g. `"target"`, `"mouseover"`, `"focus"`, `"nameplate1"`). It is guaranteed to never return a secret value.
+  - Replaced all raw `ns.activeTimers[guid]` lookups and assignments in `ScanUnit`, `OnPlayerSpellcastSucceeded`, `PLAYER_TARGET_CHANGED`, and `NAME_PLATE_UNIT_REMOVED` with safe key indexing.
+  - In `Display.lua`, enhanced target sorting and header rendering to recognize `target.key == "target"` alongside GUID matching.
+- **Resolved Stack Overflow in ShardManager (`ShardManager.lua:59`)**:
+  - Root cause: `ShardManager:ScanBags()` invoked `QueueCleanup()` when excess shards were present; `CleanupExcessShards()` then called `ScanBags()`, triggering an infinite recursive loop resulting in `stack overflow`.
+  - Added `isCleaningUp` re-entrancy lock to ensure bag scans triggered during excess shard deletion do not re-trigger `QueueCleanup()`.
 - **Resolved Timer Vanishing in Combat/Dungeons (`Tracker.lua`)**:
   - Root cause: Overly aggressive `IsSecret(...)` guard clauses introduced during secret string hardening inadvertently dropped valid timers:
     1. `OnPlayerSpellcastSucceeded` had `if not targetGUID or IsSecret(targetGUID) then return end`, aborting timer creation whenever `targetGUID` was flagged by the engine.

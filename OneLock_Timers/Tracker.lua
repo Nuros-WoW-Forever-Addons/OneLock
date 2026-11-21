@@ -129,6 +129,20 @@ local function IsSecret(val)
     return issecretvalue and issecretvalue(val)
 end
 
+-- Generates a table-safe key. Never returns a secret value.
+-- Standard Lua tables cannot be indexed with secret keys in WoW Forever.
+local function GetSafeUnitKey(unit, fallbackGUID)
+    local guid = fallbackGUID
+    if not guid and unit then
+        local okG, g = pcall(UnitGUID, unit)
+        if okG and g then guid = g end
+    end
+    if guid and not IsSecret(guid) then
+        return guid
+    end
+    return unit or "target"
+end
+
 -------------------------------------------------------------------------------
 -- Modern C_UnitAuras Scanner (Hardened against Secret Aura Taint)
 -------------------------------------------------------------------------------
@@ -203,11 +217,12 @@ local function ScanUnit(unit)
         return
     end
 
+    local key = GetSafeUnitKey(unit)
+
     local okDead, isDead = pcall(UnitIsDead, unit)
     if okDead and not IsSecret(isDead) and isDead == true then
-        local okGuid, deadGUID = pcall(UnitGUID, unit)
-        if okGuid and deadGUID and ns.activeTimers[deadGUID] then
-            ns.activeTimers[deadGUID] = nil
+        if ns.activeTimers[key] then
+            ns.activeTimers[key] = nil
             if ns.Display and ns.Display.OnTimerUpdated then
                 ns.Display:OnTimerUpdated()
             end
@@ -219,9 +234,8 @@ local function ScanUnit(unit)
     -- Warlock offensive DoTs and CCs can only exist on attackable hostile units.
     local okAttack, canAttack = pcall(UnitCanAttack, "player", unit)
     if okAttack and not IsSecret(canAttack) and canAttack == false then
-        local okGuid, nonHostileGUID = pcall(UnitGUID, unit)
-        if okGuid and nonHostileGUID and ns.activeTimers[nonHostileGUID] then
-            ns.activeTimers[nonHostileGUID] = nil
+        if ns.activeTimers[key] then
+            ns.activeTimers[key] = nil
             if ns.Display and ns.Display.OnTimerUpdated then
                 ns.Display:OnTimerUpdated()
             end
@@ -229,12 +243,9 @@ local function ScanUnit(unit)
         return
     end
 
-    local okGuid, guid = pcall(UnitGUID, unit)
-    if not okGuid or not guid then return end
-
     local okName, unitName = pcall(UnitName, unit)
     if not okName or not unitName or IsSecret(unitName) then
-        unitName = (ns.activeTimers[guid] and ns.activeTimers[guid].name) or "Target"
+        unitName = (ns.activeTimers[key] and ns.activeTimers[key].name) or "Target"
     end
 
     local now = GetTime()
@@ -281,19 +292,19 @@ local function ScanUnit(unit)
             local effExpiration = hasExp and expirationTime or (now + effDuration)
             local effIcon = icon or spellDef.icon
 
-            if not ns.activeTimers[guid] then
-                ns.activeTimers[guid] = {
-                    guid = guid,
+            if not ns.activeTimers[key] then
+                ns.activeTimers[key] = {
+                    key = key,
                     name = unitName,
                     lastSeen = now,
                     spells = {},
                 }
             else
-                ns.activeTimers[guid].name = unitName
-                ns.activeTimers[guid].lastSeen = now
+                ns.activeTimers[key].name = unitName
+                ns.activeTimers[key].lastSeen = now
             end
 
-            ns.activeTimers[guid].spells[name] = {
+            ns.activeTimers[key].spells[name] = {
                 spellId = (spellId and not IsSecret(spellId) and spellId) or spellDef.spellId,
                 spellName = name,
                 icon = effIcon,
@@ -310,25 +321,25 @@ local function ScanUnit(unit)
 
     -- If this unit was previously tracked, ONLY prune if we successfully read real auras from it.
     -- 3.0s grace period allows network/aura latency before pruning a freshly cast debuff.
-    if anyAurasRead and ns.activeTimers[guid] then
+    if anyAurasRead and ns.activeTimers[key] then
         local removedAny = false
-        for activeName, activeTimer in pairs(ns.activeTimers[guid].spells) do
+        for activeName, activeTimer in pairs(ns.activeTimers[key].spells) do
             if not foundSpells[activeName] then
                 local age = now - (activeTimer.startTime or 0)
                 if age > 3.0 then
-                    ns.activeTimers[guid].spells[activeName] = nil
+                    ns.activeTimers[key].spells[activeName] = nil
                     removedAny = true
                 end
             end
         end
 
         local count = 0
-        for _ in pairs(ns.activeTimers[guid].spells) do
+        for _ in pairs(ns.activeTimers[key].spells) do
             count = count + 1
         end
 
         if count == 0 then
-            ns.activeTimers[guid] = nil
+            ns.activeTimers[key] = nil
             removedAny = true
         end
 
@@ -344,7 +355,7 @@ end
 -- Player Spellcast Engine (Combat Secret Immunity)
 -------------------------------------------------------------------------------
 local lastCastTargetName = nil
-local lastCastTargetGUID = nil
+local lastCastTargetKey = "target"
 
 local function SafeNameMatch(unitToken, targetName)
     if not targetName or IsSecret(targetName) then return false end
@@ -363,14 +374,11 @@ local function OnSpellcastSent(unit, target, castGUID, spellID)
         end
 
         if SafeNameMatch("mouseover", target) then
-            local okG, g = pcall(UnitGUID, "mouseover")
-            lastCastTargetGUID = okG and g or nil
+            lastCastTargetKey = GetSafeUnitKey("mouseover")
         elseif SafeNameMatch("focus", target) then
-            local okG, g = pcall(UnitGUID, "focus")
-            lastCastTargetGUID = okG and g or nil
+            lastCastTargetKey = GetSafeUnitKey("focus")
         else
-            local okG, g = pcall(UnitGUID, "target")
-            lastCastTargetGUID = okG and g or nil
+            lastCastTargetKey = GetSafeUnitKey("target")
         end
     end
 end
@@ -385,12 +393,7 @@ local function OnPlayerSpellcastSucceeded(spellID)
 
     local effDuration = (SPELL_DURATIONS_BY_ID and SPELL_DURATIONS_BY_ID[spellID]) or spellDef.duration
 
-    local targetGUID = lastCastTargetGUID
-    if not targetGUID then
-        local okG, g = pcall(UnitGUID, "target")
-        if okG and g then targetGUID = g end
-    end
-    if not targetGUID then return end
+    local key = lastCastTargetKey or GetSafeUnitKey("target")
 
     local targetName = lastCastTargetName
     if not targetName or IsSecret(targetName) then
@@ -398,7 +401,7 @@ local function OnPlayerSpellcastSucceeded(spellID)
         if okName and uName and not IsSecret(uName) then
             targetName = uName
         else
-            targetName = (ns.activeTimers[targetGUID] and ns.activeTimers[targetGUID].name) or "Target"
+            targetName = (ns.activeTimers[key] and ns.activeTimers[key].name) or "Target"
         end
     end
 
@@ -406,19 +409,19 @@ local function OnPlayerSpellcastSucceeded(spellID)
     local effExpiration = now + effDuration
     local effIcon = (icon and icon ~= "") and icon or spellDef.icon
 
-    if not ns.activeTimers[targetGUID] then
-        ns.activeTimers[targetGUID] = {
-            guid = targetGUID,
+    if not ns.activeTimers[key] then
+        ns.activeTimers[key] = {
+            key = key,
             name = targetName,
             lastSeen = now,
             spells = {},
         }
     else
-        ns.activeTimers[targetGUID].name = targetName
-        ns.activeTimers[targetGUID].lastSeen = now
+        ns.activeTimers[key].name = targetName
+        ns.activeTimers[key].lastSeen = now
     end
 
-    ns.activeTimers[targetGUID].spells[spellName] = {
+    ns.activeTimers[key].spells[spellName] = {
         spellId = spellID,
         spellName = spellName,
         icon = effIcon,
@@ -495,10 +498,10 @@ function Tracker:Initialize()
             end
         elseif event == "PLAYER_TARGET_CHANGED" then
             local okDead, isDead = pcall(UnitIsDead, "target")
+            local key = GetSafeUnitKey("target")
             if okDead and not IsSecret(isDead) and isDead == true then
-                local okG, guid = pcall(UnitGUID, "target")
-                if okG and guid and ns.activeTimers[guid] then
-                    ns.activeTimers[guid] = nil
+                if ns.activeTimers[key] then
+                    ns.activeTimers[key] = nil
                     if ns.Display and ns.Display.OnTimerUpdated then
                         ns.Display:OnTimerUpdated()
                     end
@@ -519,11 +522,11 @@ function Tracker:Initialize()
             end
         elseif event == "NAME_PLATE_UNIT_REMOVED" then
             if unit then
+                local key = GetSafeUnitKey(unit)
                 local okDead, isDead = pcall(UnitIsDead, unit)
                 if okDead and not IsSecret(isDead) and isDead == true then
-                    local okG, guid = pcall(UnitGUID, unit)
-                    if okG and guid and ns.activeTimers[guid] then
-                        ns.activeTimers[guid] = nil
+                    if ns.activeTimers[key] then
+                        ns.activeTimers[key] = nil
                         if ns.Display and ns.Display.OnTimerUpdated then
                             ns.Display:OnTimerUpdated()
                         end
