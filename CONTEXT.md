@@ -118,10 +118,14 @@ OneLockTimersDB = {
 ### `OneLockShardsDB`
 ```lua
 OneLockShardsDB = {
-    version = 1,
+    version = 2,
     maxShards = 24,                    -- Maximum Soul Shards to keep in inventory
-    autoDeleteExcess = false,          -- Automatically delete excess shards when out of combat
+    autoDeleteExcess = false,          -- Out-of-combat cap alert when inventory exceeds maxShards
+    autoSortShards = false,            -- Automatically sort Soul Shards to designated bag slot out of combat
+    sortTargetBag = 4,                 -- Designated bag slot for Soul Shards (0 = Backpack, 4 = Leftmost Bag)
     showSoulstoneBar = true,           -- Display 30-minute soulstone expiration bar
+    enableSoulstoneAlerts = true,      -- Visual alert banners for Soulstone events
+    announceSoulstone = true,          -- Group announcements (Party, Raid, Raid Warning)
     soulstoneAnchor = {
         point = "BOTTOMLEFT",
         relativePoint = "BOTTOMLEFT",
@@ -173,6 +177,24 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.1.14 (Soul Shard Auto-Sorting & Bag Slot Targeting)
+- **Soul Shard Auto-Sort Engine (`ShardManager.lua`)**:
+  - Implemented `ShardManager:SortShards(explicitTargetBag)`:
+    - Scans player inventory for Soul Shards (`SOUL_SHARD_ITEM_ID = 6265`) located outside the target bag slot.
+    - Scans target bag (default: Bag 4, the leftmost bag where Soul Pouches / Felcloth Bags reside) for available empty slots.
+    - Safely transfers misplaced Soul Shards into empty slots using `C_Container.PickupContainerItem` (with fallback to `PickupItem`).
+    - Validates that cursor is empty (`CursorHasItem()`), player is out of combat (`not InCombatLockdown()`), and uses an `isSorting` re-entrancy lock to prevent event loops.
+    - If in combat when triggered, queues action via `pendingSort = true` and flushes automatically on `PLAYER_REGEN_ENABLED`.
+  - Added event-driven auto-sorting listening on `BAG_UPDATE_DELAYED` when `autoSortShards = true`.
+- **Options UI & Slash Commands**:
+  - Added checkbox: `"Auto-sort Soul Shards to designated bag"` in Options Panel Section 2.
+  - Added stepper: `"Target Bag Slot:"` (0 = Backpack, 1-3 = Bags 1-3, 4 = Bag 4 Leftmost/Soul Bag) using inline formatted stepper display.
+  - Added action button: `[Sort Shards to Bag Now]` in Options Panel Section 2.
+  - Added slash commands:
+    - `/olshards autosort` — Toggle auto-sorting on bag updates.
+    - `/olshards bag <0-4>` — Set designated bag slot.
+    - `/olshards sort` (or `sortnow`) — Execute an immediate inventory sort to the target bag out of combat.
 
 ### Spin 0.1.12 (Compact Icon Mode Configuration — Active on Dev Branch)
 - **Compact Horizontal Spell Icon Configuration (`displayMode = "ICONS"`)**:

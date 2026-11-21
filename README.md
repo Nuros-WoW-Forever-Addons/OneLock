@@ -67,8 +67,12 @@ OneLock includes a full graphical configuration panel available in two modes:
 - `/olshards reset` — Reset Soulstone HUD position to default.
 - `/olshards count` — Print current soul shard inventory count.
 - `/olshards cap <1-32>` — Configure maximum soul shard retention cap (default: 24).
-- `/olshards autodelete` — Toggle automatic out-of-combat deletion of excess shards.
-- `/olshards cleanup` — Immediately delete shards above cap out of combat.
+- `/olshards autodelete` — Toggle out-of-combat inventory cap warning.
+- `/olshards autosort` — Toggle auto-sorting soul shards into designated bag slot.
+- `/olshards bag <0-4>` — Set target bag slot (0 = Backpack, 4 = Leftmost Bag / Soul Pouch).
+- `/olshards sort` — Sort Soul Shards into designated bag now.
+- `/olshards purge` — Purge 1 excess soul shard now out of combat.
+- `/click OneLockPurgeShards` — Secure hardware macro command to purge 1 excess shard per click.
 
 ### `OneLock_Procs` (`/olprocs`)
 - `/olprocs move` — Toggle purple edit-mode anchor box to reposition the alert banner.

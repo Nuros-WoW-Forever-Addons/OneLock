@@ -109,9 +109,10 @@ local function CreateStepper(parent, labelText, minVal, maxVal, step, getter, se
     local btnPlus = CreateButton(container, "+", 24, 22, nil)
 
     if anchorAfterLabel then
+        local w = (type(anchorAfterLabel) == "number" and anchorAfterLabel) or 48
         btnMinus:SetPoint("LEFT", label, "RIGHT", 8, 0)
         valText:SetPoint("LEFT", btnMinus, "RIGHT", 4, 0)
-        valText:SetWidth(48)
+        valText:SetWidth(w)
         btnPlus:SetPoint("LEFT", valText, "RIGHT", 4, 0)
     else
         btnMinus:SetPoint("RIGHT", container, "RIGHT", -110, 0)
@@ -120,11 +121,19 @@ local function CreateStepper(parent, labelText, minVal, maxVal, step, getter, se
         btnPlus:SetPoint("RIGHT", container, "RIGHT", 0, 0)
     end
 
+    local function GetFormattedText(val)
+        if type(formatStr) == "function" then
+            return formatStr(val)
+        else
+            return string.format(formatStr or "%d", val)
+        end
+    end
+
     local function UpdateVal(newVal)
         newVal = math.max(minVal, math.min(maxVal, newVal))
         newVal = math.floor((newVal / step) + 0.5) * step
         setter(newVal)
-        valText:SetText("|cffffd100" .. string.format(formatStr or "%d", newVal) .. "|r")
+        valText:SetText("|cffffd100" .. GetFormattedText(newVal) .. "|r")
         if onChange then onChange(newVal) end
     end
 
@@ -137,7 +146,7 @@ local function CreateStepper(parent, labelText, minVal, maxVal, step, getter, se
     end)
 
     container.Refresh = function()
-        valText:SetText("|cffffd100" .. string.format(formatStr or "%d", getter()) .. "|r")
+        valText:SetText("|cffffd100" .. GetFormattedText(getter()) .. "|r")
     end
     container:SetScript("OnShow", container.Refresh)
     container.Refresh()
@@ -561,6 +570,45 @@ local function PopulateControls(content, isStandalone)
         end
     end)
     btnClean:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    curY = curY - 34
+
+    -- Auto-sort Soul Shards to designated bag slot
+    local cbAutoSort = CreateCheckbox(content, "Auto-sort Soul Shards to designated bag",
+        function() return _G.OneLockShardsDB and _G.OneLockShardsDB.autoSortShards end,
+        function(v)
+            if _G.OneLockShardsDB then _G.OneLockShardsDB.autoSortShards = v end
+            if _G.OneLock_Shards and _G.OneLock_Shards.db then _G.OneLock_Shards.db.autoSortShards = v end
+        end,
+        nil
+    )
+    cbAutoSort:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbAutoSort)
+    curY = curY - 30
+
+    local stepSortBag = CreateStepper(content, "Target Bag Slot:", 0, 4, 1,
+        function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.sortTargetBag) or 4 end,
+        function(v)
+            if _G.OneLockShardsDB then _G.OneLockShardsDB.sortTargetBag = v end
+            if _G.OneLock_Shards and _G.OneLock_Shards.db then _G.OneLock_Shards.db.sortTargetBag = v end
+        end,
+        function(val)
+            if val == 0 then return "Backpack (0)"
+            elseif val == 4 then return "Bag 4 (Leftmost)"
+            else return "Bag " .. tostring(val) end
+        end,
+        nil,
+        110 -- anchorAfterLabel with 110px width
+    )
+    stepSortBag:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepSortBag)
+    curY = curY - 30
+
+    local btnSortNow = CreateButton(content, "Sort Shards to Bag Now", 200, 24, function()
+        if _G.OneLock_Shards and _G.OneLock_Shards.ShardManager then
+            _G.OneLock_Shards.ShardManager:SortShards()
+        end
+    end)
+    btnSortNow:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     curY = curY - 40
 
     -- ========================================================================

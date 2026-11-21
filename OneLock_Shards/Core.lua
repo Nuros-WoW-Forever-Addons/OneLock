@@ -13,6 +13,8 @@ local defaultDB = {
     version = 2,
     maxShards = 24,
     autoDeleteExcess = false,
+    autoSortShards = false,
+    sortTargetBag = 4,                  -- Bag 4 (Leftmost / Soul Bag)
     showSoulstoneBar = true,
     enableSoulstoneAlerts = true,
     announceSoulstone = true,
@@ -143,6 +145,27 @@ local function HandleSlashCommand(msg)
             ns:Print("Auto-deletion of excess soul shards |cffff4444DISABLED|r.")
         end
         ns:Log("INFO", "Settings", "Auto-delete toggled: " .. tostring(ns.db.autoDeleteExcess))
+    elseif cmd == "autosort" then
+        ns.db.autoSortShards = not ns.db.autoSortShards
+        if ns.db.autoSortShards then
+            ns:Print("Auto-sort Soul Shards |cff44ff44ENABLED|r (Target: " .. tostring(ns.db.sortTargetBag or 4) .. ").")
+        else
+            ns:Print("Auto-sort Soul Shards |cffff4444DISABLED|r.")
+        end
+        ns:Log("INFO", "Settings", "Auto-sort toggled: " .. tostring(ns.db.autoSortShards))
+    elseif cmd == "bag" or cmd == "targetbag" then
+        local bagNum = tonumber(arg)
+        if bagNum and bagNum >= 0 and bagNum <= 4 then
+            ns.db.sortTargetBag = bagNum
+            local bName = (bagNum == 0 and "Backpack") or ("Bag " .. bagNum)
+            ns:Print(string.format("Soul Shard target bag set to |cffffd100%s|r (Bag ID: %d).", bName, bagNum))
+        else
+            ns:Print("Usage: /olshards bag <0-4> (0 = Backpack, 4 = Leftmost Bag)")
+        end
+    elseif cmd == "sort" or cmd == "sortnow" then
+        if ns.ShardManager and ns.ShardManager.SortShards then
+            ns.ShardManager:SortShards()
+        end
     elseif cmd == "cleanup" or cmd == "purge" then
         if ns.ShardManager and ns.ShardManager.PurgeOneExcessShard then
             ns.ShardManager:PurgeOneExcessShard()
@@ -175,6 +198,9 @@ local function HandleSlashCommand(msg)
         print("  |cffffd100/olshards count|r — Print current soul shard count")
         print("  |cffffd100/olshards cap <1-32>|r — Set soul shard inventory cap")
         print("  |cffffd100/olshards autodelete|r — Toggle out-of-combat cap alert")
+        print("  |cffffd100/olshards autosort|r — Toggle auto-sorting shards into target bag")
+        print("  |cffffd100/olshards bag <0-4>|r — Set target bag slot (0 = Backpack, 4 = Leftmost)")
+        print("  |cffffd100/olshards sort|r — Sort Soul Shards into designated bag now")
         print("  |cffffd100/olshards purge|r — Purge 1 excess soul shard now")
         print("  |cffffd100/click OneLockPurgeShards|r — Macro keybind command to purge 1 excess shard")
     end

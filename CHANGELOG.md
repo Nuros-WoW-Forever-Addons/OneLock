@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Soul Shard Auto-Sort to Designated Bag (`OneLock_Shards`)**:
+  - Implemented `ShardManager:SortShards(explicitTargetBag)` to automatically identify Soul Shards located outside the target bag and move them into available empty slots in the designated bag.
+  - Defaults to Bag 4 (the leftmost bag container, commonly reserved for Soul Bags / Felcloth Bags).
+  - Out-of-combat safety guards: strictly halts when `InCombatLockdown()` is true (queuing for `PLAYER_REGEN_ENABLED`), when the player is holding an item on the cursor (`CursorHasItem()`), or during active sorting loops (`isSorting` lock).
+  - Listens on `BAG_UPDATE_DELAYED` for non-intrusive automatic sorting as bag contents settle.
+  - Added Options UI controls:
+    - `"Auto-sort Soul Shards to designated bag"` checkbox.
+    - `"Target Bag Slot:"` stepper with custom labels (`Backpack (0)`, `Bag 1`, `Bag 2`, `Bag 3`, `Bag 4 (Leftmost)`).
+    - `[Sort Shards to Bag Now]` manual sort button.
+  - Added slash commands:
+    - `/olshards autosort` — Toggle auto-sorting on bag updates.
+    - `/olshards bag <0-4>` — Set target bag slot (0 = Backpack, 4 = Leftmost Bag).
+    - `/olshards sort` / `/olshards sortnow` — Trigger immediate manual sort.
 - **1-Click Hardware Purge Button & Macro Target (`OneLock_Shards`)**:
   - Implemented secure hardware button `OneLockPurgeShards` and macro target (`/click OneLockPurgeShards`) to safely purge 1 excess Soul Shard per physical keypress or mouse click outside of combat.
   - Added "Purge 1 Excess Shard Now" button to Options UI and `/olshards purge` slash command.

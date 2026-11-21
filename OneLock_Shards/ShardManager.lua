@@ -204,6 +204,93 @@ local function CreatePurgeButton()
 end
 
 -------------------------------------------------------------------------------
+-- Auto-Sort Soul Shards into Designated Bag Slot
+-------------------------------------------------------------------------------
+local isSorting = false
+local pendingSort = false
+
+function ShardManager:SortShards(explicitTargetBag)
+    if InCombatLockdown() then
+        pendingSort = true
+        return false
+    end
+    if isSorting then return false end
+    if CursorHasItem() then return false end
+
+    local targetBag = explicitTargetBag
+    if targetBag == nil then
+        targetBag = (ns.db and ns.db.sortTargetBag ~= nil and ns.db.sortTargetBag) or 4
+    end
+    targetBag = tonumber(targetBag) or 4
+    if targetBag < 0 or targetBag > 4 then return false end
+
+    local numSlots = GetNumSlots(targetBag)
+    if not numSlots or numSlots == 0 then
+        return false
+    end
+
+    -- 1. Identify misplaced soul shards not in targetBag
+    local misplaced = {}
+    for bag = 0, 4 do
+        if bag ~= targetBag then
+            local slots = GetNumSlots(bag)
+            if slots and slots > 0 then
+                for slot = 1, slots do
+                    local itemId = GetItemID(bag, slot)
+                    if itemId == SOUL_SHARD_ITEM_ID then
+                        table.insert(misplaced, { bag = bag, slot = slot })
+                    end
+                end
+            end
+        end
+    end
+
+    if #misplaced == 0 then return false end
+
+    -- 2. Identify empty slots in targetBag
+    local emptySlots = {}
+    for slot = 1, numSlots do
+        local itemId = GetItemID(targetBag, slot)
+        if itemId == nil then
+            table.insert(emptySlots, slot)
+        end
+    end
+
+    if #emptySlots == 0 then
+        return false
+    end
+
+    -- 3. Move misplaced shards into empty slots
+    isSorting = true
+    local moved = 0
+    local toMove = math.min(#misplaced, #emptySlots)
+
+    for i = 1, toMove do
+        local src = misplaced[i]
+        local destSlot = emptySlots[i]
+        ClearCursor()
+        PickupItem(src.bag, src.slot)
+        if CursorHasItem() then
+            PickupItem(targetBag, destSlot)
+            ClearCursor()
+            moved = moved + 1
+        end
+    end
+
+    isSorting = false
+
+    if moved > 0 then
+        self:ScanBags()
+        local bagName = (targetBag == 0 and "Backpack") or ("Bag " .. targetBag)
+        ns:Print(string.format("Sorted %d Soul Shard(s) into |cffffd100%s|r.", moved, bagName))
+        ns:Log("INFO", "ShardManager", string.format("Sorted %d Soul Shards into bag %d.", moved, targetBag))
+        return true
+    end
+
+    return false
+end
+
+-------------------------------------------------------------------------------
 -- Event Handling
 -------------------------------------------------------------------------------
 function ShardManager:Initialize()
@@ -217,9 +304,18 @@ function ShardManager:Initialize()
     eventFrame:SetScript("OnEvent", function(self, event)
         if event == "BAG_UPDATE" or event == "BAG_UPDATE_DELAYED" then
             ShardManager:ScanBags()
+            if event == "BAG_UPDATE_DELAYED" and ns.db and ns.db.autoSortShards and not isSorting and not InCombatLockdown() and not CursorHasItem() then
+                ShardManager:SortShards()
+            end
         elseif event == "PLAYER_REGEN_ENABLED" then
             if pendingCleanup then
                 ShardManager:CleanupExcessShards()
+            end
+            if pendingSort then
+                pendingSort = false
+                if ns.db and ns.db.autoSortShards then
+                    ShardManager:SortShards()
+                end
             end
         end
     end)
