@@ -187,7 +187,12 @@ When picking up development on this addon:
 - **Branch Policy Notice**:
   - Kept exclusively on `dev` branch for live testing per user instructions; not merged to `main` until verified.
 
-### Spin 0.1.13 (Dungeon Secret String Immunity, Secret Table Indexing Protection & Shard Recursion Fix)
+### Spin 0.1.13 (Dungeon Secret String Immunity, Secret Table Indexing Protection & Shard Cleanup Hardening)
+- **Resolved Protected Function Call Blocked on Item Deletion (`ShardManager.lua:131`)**:
+  - Root cause: In modern WoW / Interface 16001, `DeleteCursorItem()` is a protected Blizzard API restricted from automated background execution without a direct hardware event (`Protected function call blocked: AddOn 'OneLock_Shards' attempted to call 'DeleteCursorItem()'`).
+  - When `autoDeleteExcess` was enabled with low shard caps (e.g. 6), `ScanBags()` invoked `CleanupExcessShards()`, triggering protected call blocks on every bag update.
+  - Replaced automated `DeleteCursorItem()` calls with a throttled chat notification alerting the player when the inventory shard cap is exceeded, advising manual deletion/vending.
+  - Updated OptionsUI checkbox and button to clearly indicate notification behavior without triggering protected calls.
 - **Resolved Fatal Secret Key Table Indexing Errors (`Tracker.lua:209, 223, 237, 525`, `Display.lua`)**:
   - Root cause: In combat/dungeons, the engine marks enemy `UnitGUID` returns as secret values. Standard Lua tables (`ns.activeTimers = {}`) cannot be indexed with secret keys in WoW Forever (`attempted to index a table that cannot be indexed with secret keys`).
   - Implemented `GetSafeUnitKey(unit, fallbackGUID)` which extracts non-secret GUIDs when available, and strictly falls back to safe string literals (`unit` or `"target"`, e.g. `"target"`, `"mouseover"`, `"focus"`, `"nameplate1"`). It is guaranteed to never return a secret value.

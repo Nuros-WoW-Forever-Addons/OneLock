@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Protected Action Immunity for Soul Shard Cleanup (`OneLock_Shards/ShardManager.lua`)**:
+  - Eliminated `Protected function call blocked: AddOn 'OneLock_Shards' attempted to call 'DeleteCursorItem()'` error triggered on bag updates when shard inventory exceeded the configured cap.
+  - Replaced blocked automated cursor deletions with a clean, throttled chat alert notifying the player when their shard cap is exceeded.
 - **Secret Key Table Indexing Immunity (`OneLock_Timers/Tracker.lua`, `Display.lua`)**:
   - Fixed fatal Lua error `attempted to index a table that cannot be indexed with secret keys` occurring in combat when indexing `ns.activeTimers` with secret enemy GUIDs.
   - Implemented `GetSafeUnitKey(unit, fallbackGUID)` guaranteeing table lookups and insertions strictly use non-secret string keys or unit tokens (`"target"`, `"nameplate1"`, etc.).

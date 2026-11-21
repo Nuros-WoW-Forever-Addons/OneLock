@@ -546,7 +546,7 @@ local function PopulateControls(content, isStandalone)
     table.insert(refreshables, stepShards)
     curY = curY - 30
 
-    local cbAutoDelete = CreateCheckbox(content, "Auto-delete excess Soul Shards (Runs out of combat)",
+    local cbAutoDelete = CreateCheckbox(content, "Alert when Soul Shard cap exceeded",
         function() return _G.OneLockShardsDB and _G.OneLockShardsDB.autoDeleteExcess end,
         function(v) if _G.OneLockShardsDB then _G.OneLockShardsDB.autoDeleteExcess = v end end,
         nil
@@ -555,7 +555,7 @@ local function PopulateControls(content, isStandalone)
     table.insert(refreshables, cbAutoDelete)
     curY = curY - 30
 
-    local btnClean = CreateButton(content, "Clean Up Excess Shards Now", 200, 24, function()
+    local btnClean = CreateButton(content, "Check Excess Shards Now", 200, 24, function()
         if _G.OneLock_Shards and _G.OneLock_Shards.ShardManager then
             _G.OneLock_Shards.ShardManager:CleanupExcessShards()
         end

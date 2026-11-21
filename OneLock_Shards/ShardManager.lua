@@ -51,6 +51,7 @@ end
 -- Scan Bags for Soul Shards
 -------------------------------------------------------------------------------
 local isCleaningUp = false
+local lastAlertedShardCount = 0
 
 function ShardManager:ScanBags()
     local count = 0
@@ -73,7 +74,11 @@ function ShardManager:ScanBags()
     currentShardCount = count
     ShardManager.shardLocations = shardLocations
 
-    -- Check if auto-cleanup is enabled and cap is exceeded (prevent recursive re-entry)
+    if count <= ((ns.db and ns.db.maxShards) or 24) then
+        lastAlertedShardCount = 0
+    end
+
+    -- Check if excess alert/cleanup is enabled and cap is exceeded (prevent recursive re-entry)
     local maxShards = (ns.db and ns.db.maxShards) or 24
     if not isCleaningUp and ns.db and ns.db.autoDeleteExcess and count > maxShards then
         self:QueueCleanup()
@@ -101,7 +106,6 @@ function ShardManager:CleanupExcessShards()
     if isCleaningUp then return end
     if InCombatLockdown() then
         pendingCleanup = true
-        ns:Print("Cannot delete soul shards during combat. Scheduled for combat end.")
         return
     end
 
@@ -109,35 +113,23 @@ function ShardManager:CleanupExcessShards()
     local maxShards = (ns.db and ns.db.maxShards) or 24
     self:ScanBags()
 
+    pendingCleanup = false
+    isCleaningUp = false
+
     if currentShardCount <= maxShards then
-        pendingCleanup = false
-        isCleaningUp = false
         return
     end
 
     local excessCount = currentShardCount - maxShards
-    local deleted = 0
 
-    -- Delete from highest bag down (secondary bags before backpack)
-    for i = #ShardManager.shardLocations, 1, -1 do
-        if deleted >= excessCount then break end
-
-        local loc = ShardManager.shardLocations[i]
-        local itemId = GetItemID(loc.bag, loc.slot)
-        if itemId == SOUL_SHARD_ITEM_ID then
-            ClearCursor()
-            PickupItem(loc.bag, loc.slot)
-            if CursorHasItem() then
-                DeleteCursorItem()
-                deleted = deleted + 1
-            end
-        end
+    -- In WoW Forever (Interface 16001 / modern UI baseline), DeleteCursorItem()
+    -- is a protected Blizzard API that cannot be called programmatically by addons
+    -- without being blocked. We safely alert the player without triggering protected call taint.
+    if currentShardCount ~= lastAlertedShardCount then
+        lastAlertedShardCount = currentShardCount
+        ns:Print(string.format("Soul Shard cap exceeded: |cffffd100%d/%d|r (%d excess). Blizzard UI security restricts automated item deletion; please discard excess shards manually.", currentShardCount, maxShards, excessCount))
+        ns:Log("WARNING", "ShardManager", string.format("Shard cap exceeded (%d/%d). Automated DeleteCursorItem is protected by Blizzard.", currentShardCount, maxShards))
     end
-
-    pendingCleanup = false
-    isCleaningUp = false
-    ns:Print(string.format("Purged |cffffd100%d|r excess Soul Shard(s). Current count: %d", deleted, currentShardCount - deleted))
-    ns:Log("INFO", "ShardManager", string.format("Deleted %d excess Soul Shards (Remaining: %d)", deleted, currentShardCount - deleted))
 end
 
 -------------------------------------------------------------------------------
