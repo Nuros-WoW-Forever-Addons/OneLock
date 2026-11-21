@@ -14,11 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented `ShardManager:CheckAndCreatePurgeMacro(verbose)`:
     - Safely checks player class (`UnitClass("player") == "WARLOCK"`).
     - Checks out-of-combat safety (`not InCombatLockdown()`), queueing on combat exit if triggered during encounters.
-    - Creates or updates character-specific macro `PurgeShard` under the character macros tab:
-      ```text
-      #showtooltip Soul Shard
-      /click OneLockPurgeShards
-      ```
+    - Creates or updates character-specific macro `PurgeShard` under the character macros tab using numeric icon FileID `134400` and boolean `isLocal = true` (resolving modern engine parameter type requirements).
+    - Accurately scans character macro range (`MAX_ACCOUNT_MACROS + 1` to `MAX_ACCOUNT_MACROS + numCharacter`) to detect existing character macros targeting `/click OneLockPurgeShards` (such as `ShardTrash`).
+    - Automatically calls `MacroFrame_Update()` if the Blizzard macro window is open so newly created macro buttons appear immediately.
+    - Routes user notifications to both `DEFAULT_CHAT_FRAME` and `OneAddon` chat tabs.
     - Added UI checkbox `"Auto-create Purge Macro under Character Macros (Warlock)"` and button `[Create / Update Purge Macro Now]`.
     - Added `/olshards macro` slash command to toggle auto-creation and trigger immediate execution.
 - **Soul Shard Auto-Sort to Designated Bag (`OneLock_Shards`)**:

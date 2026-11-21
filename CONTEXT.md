@@ -198,7 +198,11 @@ When picking up development on this addon:
       #showtooltip Soul Shard
       /click OneLockPurgeShards
       ```
-    - Uses icon `INV_MISC_QUESTIONMARK` (`134400`) to dynamically display Soul Shard icon and tooltip on action bars.
+    - Uses FileID `134400` (integer) for question mark icon instead of legacy texture string to comply with modern engine `CreateMacro` requirements.
+    - Accurately scans the character-specific macro range (`maxAccount + 1` to `maxAccount + numCharacter`) and verifies `isLocal == true`.
+    - Detects any existing character macro targeting `/click OneLockPurgeShards` (including `ShardTrash` or `PurgeShard`).
+    - Triggers `pcall(MacroFrame_Update)` if the Blizzard macro dialog is open so new/updated buttons render instantly without closing the panel.
+    - Routes feedback to both `ns:Print` and `DEFAULT_CHAT_FRAME` so the user sees results immediately in their primary chat tab.
   - Added checkbox: `"Auto-create Purge Macro under Character Macros (Warlock)"` and button: `[Create / Update Purge Macro Now]`.
   - Added slash command `/olshards macro` to toggle auto-creation and immediately run macro check.
 - **Options UI & Slash Commands**:

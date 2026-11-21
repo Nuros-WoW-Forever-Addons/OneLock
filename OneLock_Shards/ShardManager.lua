@@ -295,14 +295,51 @@ end
 -------------------------------------------------------------------------------
 local PURGE_MACRO_NAME = "PurgeShard"
 local PURGE_MACRO_BODY = "#showtooltip Soul Shard\n/click OneLockPurgeShards"
-local PURGE_MACRO_ICON = "INV_MISC_QUESTIONMARK"
+local PURGE_MACRO_ICON_ID = 134400 -- Question mark icon FileID (dynamically resolves via #showtooltip)
 local pendingMacro = false
 
+local function PrintFeedback(msg)
+    ns:Print(msg)
+    if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff9966ff[OneLock:Shards]|r " .. msg)
+    end
+end
+
+local function FindCharacterPurgeMacro()
+    local numAccount, numCharacter = GetNumMacros()
+    local maxAccount = MAX_ACCOUNT_MACROS or 120
+
+    -- 1. Scan character-specific macro range directly
+    if numCharacter and numCharacter > 0 then
+        for i = maxAccount + 1, maxAccount + numCharacter do
+            local name, icon, body, isLocal = GetMacroInfo(i)
+            if name and (isLocal == true or i > maxAccount) then
+                if name == PURGE_MACRO_NAME or name == "ShardTrash" or (body and body:find("OneLockPurgeShards")) then
+                    return i, name, body
+                end
+            end
+        end
+    end
+
+    -- 2. Fallback check by name via GetMacroIndexByName
+    if GetMacroIndexByName then
+        local idx = GetMacroIndexByName(PURGE_MACRO_NAME)
+        if idx and idx > 0 then
+            local name, icon, body, isLocal = GetMacroInfo(idx)
+            if isLocal == true or idx > (MAX_ACCOUNT_MACROS or 120) then
+                return idx, name, body
+            end
+        end
+    end
+
+    return nil
+end
+
 function ShardManager:CheckAndCreatePurgeMacro(verbose)
-    local _, playerClass = UnitClass("player")
+    local localizedClass, playerClass = UnitClass("player")
     if playerClass ~= "WARLOCK" then
         if verbose then
-            ns:Print("Macro creation skipped: Character is not a Warlock.")
+            PrintFeedback(string.format("Macro creation skipped: Character is %s, not a Warlock.", tostring(localizedClass or playerClass)))
         end
         return false, "Not a Warlock"
     end
@@ -310,67 +347,70 @@ function ShardManager:CheckAndCreatePurgeMacro(verbose)
     if InCombatLockdown() then
         pendingMacro = true
         if verbose then
-            ns:Print("Cannot create or update macros during combat (queued for combat exit).")
+            PrintFeedback("Cannot create or update macros during combat (queued for combat exit).")
         end
         return false, "In combat"
     end
 
-    if not CreateMacro or not GetMacroIndexByName then
+    if not CreateMacro then
         if verbose then
-            ns:Print("Macro API not available on this client.")
+            PrintFeedback("CreateMacro API is not available on this client.")
         end
         return false, "Macro API unavailable"
     end
 
-    local existingIndex = GetMacroIndexByName(PURGE_MACRO_NAME)
+    -- Check if character macro already exists
+    local existingIndex, existingName, existingBody = FindCharacterPurgeMacro()
     if existingIndex and existingIndex > 0 then
-        -- Macro already exists; verify and update body if needed
-        local currentName, currentIcon, currentBody = GetMacroInfo(existingIndex)
-        if currentBody ~= PURGE_MACRO_BODY then
-            local ok, err = pcall(EditMacro, existingIndex, PURGE_MACRO_NAME, PURGE_MACRO_ICON, PURGE_MACRO_BODY)
-            if ok then
-                if verbose then
-                    ns:Print(string.format("Updated character macro |cffffd100#%s|r.", PURGE_MACRO_NAME))
-                end
-                ns:Log("INFO", "ShardManager", "Updated existing macro: " .. PURGE_MACRO_NAME)
-                return true
-            else
-                if verbose then
-                    ns:Print("Failed to update macro: " .. tostring(err))
-                end
-                return false, err
-            end
-        else
+        if existingBody == PURGE_MACRO_BODY then
             if verbose then
-                ns:Print(string.format("Character macro |cffffd100#%s|r already exists and is up to date.", PURGE_MACRO_NAME))
+                PrintFeedback(string.format("Character macro |cffffd100#%s|r already exists in Character Macros tab.", existingName))
             end
             return true
+        else
+            local ok, err = pcall(EditMacro, existingIndex, existingName, PURGE_MACRO_ICON_ID, PURGE_MACRO_BODY)
+            if ok then
+                PrintFeedback(string.format("Updated character macro |cffffd100#%s|r in Character Macros tab.", existingName))
+                ns:Log("INFO", "ShardManager", "Updated existing character macro: " .. existingName)
+                if MacroFrame and MacroFrame:IsShown() and MacroFrame_Update then
+                    pcall(MacroFrame_Update)
+                end
+                return true
+            else
+                PrintFeedback("Failed to update character macro: " .. tostring(err))
+                return false, err
+            end
         end
     end
 
-    -- Create new character-specific macro
+    -- Verify character macro slot capacity
     local numAccount, numCharacter = GetNumMacros()
     local maxCharMacros = (MAX_CHARACTER_MACROS or 18)
     if numCharacter and numCharacter >= maxCharMacros then
-        if verbose then
-            ns:Print(string.format("Cannot create macro: Character macro slots are full (%d/%d).", numCharacter, maxCharMacros))
-        end
+        PrintFeedback(string.format("Cannot create macro: Character macro slots are full (%d/%d).", numCharacter, maxCharMacros))
         return false, "Character macro slots full"
     end
 
-    local ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, PURGE_MACRO_ICON, PURGE_MACRO_BODY, 1)
+    -- Create new character-specific macro (perCharacter = true)
+    local ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, PURGE_MACRO_ICON_ID, PURGE_MACRO_BODY, true)
     if not ok or not res then
-        ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, PURGE_MACRO_ICON, PURGE_MACRO_BODY, true)
+        -- Fallback with numeric string or 1 if client wrapper differs
+        ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, tostring(PURGE_MACRO_ICON_ID), PURGE_MACRO_BODY, true)
+    end
+    if not ok or not res then
+        ok, res = pcall(CreateMacro, PURGE_MACRO_NAME, PURGE_MACRO_ICON_ID, PURGE_MACRO_BODY, 1)
     end
 
     if ok and res and res > 0 then
-        ns:Print(string.format("Created character-specific macro |cffffd100#%s|r.", PURGE_MACRO_NAME))
+        PrintFeedback(string.format("Created character macro |cffffd100#%s|r in Character Macros tab.", PURGE_MACRO_NAME))
         ns:Log("INFO", "ShardManager", "Created character macro: " .. PURGE_MACRO_NAME)
+        if MacroFrame and MacroFrame:IsShown() and MacroFrame_Update then
+            pcall(MacroFrame_Update)
+        end
         return true
     else
-        if verbose then
-            ns:Print("Failed to create macro: " .. tostring(res))
-        end
+        PrintFeedback("Failed to create character macro: " .. tostring(res))
+        ns:Log("ERROR", "ShardManager", "Failed to create character macro: " .. tostring(res))
         return false, res
     end
 end
