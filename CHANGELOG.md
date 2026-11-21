@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Combat & Dungeon Timer Generation Restoration (`Tracker.lua`)**:
+  - Restored active DoT timer generation in dungeons and combat by removing over-aggressive secret value guards that previously aborted tracking:
+    - In `OnPlayerSpellcastSucceeded`, ensured `targetGUID` falls back to `UnitGUID("target")` and never returns prematurely on `IsSecret(targetGUID)`.
+    - In `ScanUnit`, fixed `UnitIsDead` logic to only prune when `isDead == true` (preventing secret booleans from falsely treating live mobs as dead).
+    - In `ForEachUnitDebuff`, only aborted when `UnitExists` is explicitly `false` rather than whenever `UnitExists` is secret.
+    - Added secret aura name recovery via `GetSpellDetails(spellId)` so debuffs with valid spell IDs are properly tracked.
+    - In `OnSpellcastSent`, defaulted target GUID safely to `UnitGUID("target")` when not casting on mouseover or focus.
 - **Dungeon / Instance Combat Secret String Immunity (`Tracker.lua`, `Display.lua`)**:
   - Fixed fatal Lua error `attempt to compare local 'target' (a secret string value, while execution tainted by 'OneLock_Timers')` in `UNIT_SPELLCAST_SENT` when casting DoTs in dungeons and instances.
   - Implemented `SafeNameMatch` with `IsSecret` and `pcall` guards for target, focus, and mouseover tokens.

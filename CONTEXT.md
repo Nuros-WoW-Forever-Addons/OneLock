@@ -187,12 +187,26 @@ When picking up development on this addon:
 - **Branch Policy Notice**:
   - Kept exclusively on `dev` branch for live testing per user instructions; not merged to `main` until verified.
 
-### Spin 0.1.13 (Dungeon Secret String Immunity & Spellcast Sent Hardening)
+### Spin 0.1.13 (Dungeon Secret String Immunity, Timer Restoration & Combat Hardening)
+- **Resolved Timer Vanishing in Combat/Dungeons (`Tracker.lua`)**:
+  - Root cause: Overly aggressive `IsSecret(...)` guard clauses introduced during secret string hardening inadvertently dropped valid timers:
+    1. `OnPlayerSpellcastSucceeded` had `if not targetGUID or IsSecret(targetGUID) then return end`, aborting timer creation whenever `targetGUID` was flagged by the engine.
+    2. `ScanUnit` assumed a unit was dead if `UnitIsDead` was secret (`if not okDead or isDead or IsSecret(isDead) then`), causing combat aura scans to wipe out active timers and return early.
+    3. `ForEachUnitDebuff` aborted immediately when `UnitExists` was a secret boolean (`if not okExists or not exists or IsSecret(exists) then return end`), failing to scan debuffs on living targets in combat.
+    4. Auras with secret names were skipped, preventing debuffs with valid spell IDs from being recognized.
+    5. In `OnSpellcastSent`, when `target` was secret, `SafeNameMatch` returned false and fallback `UnitExists` checks skipped, causing `lastCastTargetGUID` to default to `nil`.
+  - Fixes implemented:
+    - Defaulted `lastCastTargetGUID` directly to `UnitGUID("target")` with `pcall` in `OnSpellcastSent` when not targeting mouseover or focus.
+    - In `OnPlayerSpellcastSucceeded`, ensured `targetGUID` falls back to `UnitGUID("target")` without aborting on `IsSecret(targetGUID)`, and safely resolved `targetName` from cached state or `"Target"`.
+    - In `ScanUnit`, only treated units as dead when `isDead == true` and not secret (`okDead and not IsSecret(isDead) and isDead == true`).
+    - In `ForEachUnitDebuff`, only aborted when `exists == false` and not secret (`okExists and not IsSecret(exists) and exists == false`).
+    - Added `SafeInvoke` helper in `ForEachUnitDebuff` to resolve secret aura names from `spellId` via `GetSpellDetails(spellId)`.
+    - Protected `PLAYER_TARGET_CHANGED` and `NAME_PLATE_UNIT_REMOVED` against secret boolean branching on `UnitExists`/`UnitIsDead`.
+    - Increased prune grace period to 3.0s to allow network/aura latency before debuff verification.
 - **Resolved Fatal Secret String Error on Spellcast (`Tracker.lua:326`)**:
   - Root cause: In instances/dungeons under combat taint, `target` in `UNIT_SPELLCAST_SENT` can be passed as an engine secret string value. Evaluating string equality (`curTargetName == target`, `UnitName("focus") == target`, `UnitName("mouseover") == target`) without secret value validation caused fatal Lua errors (`attempt to compare local 'target' (a secret string value, while execution tainted by 'OneLock_Timers')`).
   - Implemented `SafeNameMatch(unitToken, targetName)` with `IsSecret` checks and `pcall` protected comparison.
   - Guarded `lastCastTargetName` to never store secret strings.
-  - Added fallback routing to `UnitExists("target")`, `UnitExists("focus")`, and `UnitExists("mouseover")` when target names are secret.
 - **Debuff Callback & Caster Secret Protection**:
   - Wrapped `ForEachUnitDebuff` callback invocations in `pcall` across all four aura enumeration paths.
   - Hardened `sourceUnit == "player"` comparison against secret string values with `pcall` and `IsSecret` checks.
