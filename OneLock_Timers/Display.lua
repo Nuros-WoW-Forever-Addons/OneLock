@@ -715,6 +715,11 @@ end
 -- Display Engine Initialization
 -------------------------------------------------------------------------------
 function Display:Initialize()
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        return
+    end
+
     CreateMasterAnchor()
 
     local updateFrame = CreateFrame("Frame", "OneLock_Timers_DisplayUpdateFrame")

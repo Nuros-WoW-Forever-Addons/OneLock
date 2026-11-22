@@ -404,6 +404,11 @@ end
 -- Initialization
 -------------------------------------------------------------------------------
 function Alerts:Initialize()
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        return
+    end
+
     CreateAlertBanner()
 
     local eventFrame = CreateFrame("Frame", "OneLock_Procs_AlertsFrame")

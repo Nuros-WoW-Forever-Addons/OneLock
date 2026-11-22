@@ -152,14 +152,14 @@ local function ForEachUnitDebuff(unit, callback)
         return
     end
 
-    local function SafeInvoke(name, icon, count, duration, expirationTime, sourceUnit, spellId)
+    local function SafeInvoke(name, icon, count, duration, expirationTime, sourceUnit, spellId, isPlayerAura)
         if (not name or IsSecret(name)) and spellId and not IsSecret(spellId) then
             local sName = GetSpellDetails(spellId)
             if sName and not IsSecret(sName) then
                 name = sName
             end
         end
-        pcall(callback, name, icon, count, duration, expirationTime, sourceUnit, spellId)
+        pcall(callback, name, icon, count, duration, expirationTime, sourceUnit, spellId, isPlayerAura)
     end
 
     -- 1. Modern C_UnitAuras.GetDebuffDataByIndex
@@ -168,7 +168,7 @@ local function ForEachUnitDebuff(unit, callback)
         while true do
             local ok, aura = pcall(C_UnitAuras.GetDebuffDataByIndex, unit, i)
             if not ok or not aura then break end
-            SafeInvoke(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            SafeInvoke(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId, aura.isPlayerAura)
             i = i + 1
         end
         return
@@ -180,7 +180,7 @@ local function ForEachUnitDebuff(unit, callback)
         while true do
             local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HARMFUL")
             if not ok or not aura then break end
-            SafeInvoke(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+            SafeInvoke(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId, aura.isPlayerAura)
             i = i + 1
         end
         return
@@ -190,7 +190,7 @@ local function ForEachUnitDebuff(unit, callback)
     if AuraUtil and AuraUtil.ForEachAura then
         pcall(AuraUtil.ForEachAura, unit, "HARMFUL", nil, function(aura)
             if aura then
-                SafeInvoke(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId)
+                SafeInvoke(aura.name, aura.icon, aura.applications, aura.duration, aura.expirationTime, aura.sourceUnit, aura.spellId, aura.isPlayerAura)
             end
         end)
         return
@@ -202,7 +202,8 @@ local function ForEachUnitDebuff(unit, callback)
         while true do
             local ok, name, icon, count, debuffType, duration, expirationTime, unitCaster, _, _, spellId = pcall(_G.UnitDebuff, unit, i)
             if not ok or not name then break end
-            SafeInvoke(name, icon, count, duration, expirationTime, unitCaster, spellId)
+            local isPlayerAura = (unitCaster == "player")
+            SafeInvoke(name, icon, count, duration, expirationTime, unitCaster, spellId, isPlayerAura)
             i = i + 1
         end
     end
@@ -275,16 +276,28 @@ local function ScanUnit(unit)
 
         if not spellDef then return end
 
-        -- Only track debuffs cast by the player
-        local hasDuration = duration and not IsSecret(duration) and duration > 0
+        -- Strictly verify that this debuff was cast by the player (or player pet).
+        -- Never assume a nil or foreign sourceUnit belongs to the player.
         local isPlayerSource = false
-        if sourceUnit and not IsSecret(sourceUnit) then
-            local okEq, eq = pcall(function() return sourceUnit == "player" end)
-            isPlayerSource = okEq and eq
-        elseif sourceUnit == nil or IsSecret(sourceUnit) then
+        if isPlayerAura == true then
             isPlayerSource = true
+        elseif sourceUnit and not IsSecret(sourceUnit) then
+            if sourceUnit == "player" or sourceUnit == "pet" then
+                isPlayerSource = true
+            else
+                local okEq, isEq = pcall(UnitIsUnit, sourceUnit, "player")
+                if okEq and isEq then
+                    isPlayerSource = true
+                else
+                    local okPet, isPet = pcall(UnitIsUnit, sourceUnit, "pet")
+                    if okPet and isPet then
+                        isPlayerSource = true
+                    end
+                end
+            end
         end
 
+        -- If not cast by the player, completely ignore this foreign aura
         if isPlayerSource then
             local rankDur = (spellId and not IsSecret(spellId) and SPELL_DURATIONS_BY_ID[spellId])
             local effDuration = (hasDuration and duration) or rankDur or spellDef.duration
@@ -477,6 +490,11 @@ end
 -- Tracker Initialization & Event Binding
 -------------------------------------------------------------------------------
 function Tracker:Initialize()
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        return
+    end
+
     ns.playerGUID = UnitGUID("player")
     InitSpellCatalog()
 

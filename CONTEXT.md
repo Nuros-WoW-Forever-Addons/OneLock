@@ -179,6 +179,20 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.15 (Foreign Warlock DoT Isolation & Non-Warlock Character Deactivation)
+- **Foreign Warlock DoT Isolation (`Tracker.lua`)**:
+  - Root cause: In `ScanUnit()`, `ForEachUnitDebuff` evaluated `isPlayerSource = true` whenever `sourceUnit == nil` or `IsSecret(sourceUnit)`. When other Warlocks in dungeons, raids, or the open world cast DoTs on an enemy, the client often leaves `sourceUnit` as `nil` (or a foreign unit token). This caused all external Warlocks' DoTs (Corruption, Curse of Agony, Immolate, etc.) to be captured as if they were cast by the player.
+  - Implemented strict source validation in `ForEachUnitDebuff` and `ScanUnit`:
+    - Passed `isPlayerAura` boolean from `C_UnitAuras` directly through to the debuff callback.
+    - Strictly checks `isPlayerAura == true` or `sourceUnit == "player"` or `sourceUnit == "pet"` or `UnitIsUnit(sourceUnit, "player")` / `UnitIsUnit(sourceUnit, "pet")`.
+    - If not verified as cast by the player, the foreign debuff is completely ignored and will never create or update an active timer bar.
+- **Suite-Wide Warlock Class Guarding (`All Modules`)**:
+  - Root cause: OneLock was executing and registering event listeners on non-Warlock characters (e.g. Rogues, Mages, Warriors), causing the tracker to scan enemy debuffs and display Warlock timers whenever a Warlock in the party debuffed the target.
+  - Added strict `UnitClass("player") == "WARLOCK"` guards:
+    - `OneLock_Timers`: `Core.lua`, `Tracker.lua`, and `Display.lua` abort initialization and register zero event or OnUpdate hooks on non-Warlocks. Slash command `/ol` reports suite status and exits.
+    - `OneLock_Shards`: `Core.lua`, `ShardManager.lua`, and `SoulstoneTracker.lua` abort initialization on non-Warlocks.
+    - `OneLock_Procs`: `Core.lua` and `Alerts.lua` abort initialization on non-Warlocks.
+
 ### Spin 0.1.14 (Soul Shard Auto-Sorting, Bag Slot Targeting & Character Purge Macro Auto-Creation)
 - **Soul Shard Auto-Sort Engine (`ShardManager.lua`)**:
   - Implemented `ShardManager:SortShards(explicitTargetBag)`:

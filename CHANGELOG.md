@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Foreign Warlock DoT Isolation (`OneLock_Timers/Tracker.lua`)**:
+  - Fixed issue where DoT timers were picking up spells cast by other Warlocks in dungeons, raids, and open-world groups.
+  - Eliminated fallback logic in `ScanUnit()` that previously assumed debuffs with a `nil` `sourceUnit` belonged to the player.
+  - Passed `isPlayerAura` boolean from `C_UnitAuras` directly into debuff scanning and strictly required verified player/pet source matching before tracking.
+- **Suite-Wide Warlock Class Guarding (`All Modules`)**:
+  - Gated all module initializations, event bindings, and OnUpdate loops behind `UnitClass("player") == "WARLOCK"`.
+  - On non-Warlock characters, `OneLock_Timers`, `OneLock_Shards`, and `OneLock_Procs` remain 100% dormant with zero event registration, zero timer frames, and zero overhead.
+
 ## [0.1.12] - 2026-11-20
 
 ### Added

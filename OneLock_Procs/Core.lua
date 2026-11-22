@@ -113,6 +113,12 @@ local function InitDB()
 end
 
 local function HandleSlashCommand(msg)
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        ns:Print(string.format("Inactive on this character (%s). OneLock is a Warlock-only suite.", tostring(playerClass)))
+        return
+    end
+
     msg = msg and msg:trim() or ""
     local cmd, arg = msg:match("^(%S+)%s*(.-)$")
     cmd = cmd and cmd:lower() or ""
@@ -176,12 +182,22 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
         InitDB()
+
+        local _, playerClass = UnitClass("player")
+        if playerClass ~= "WARLOCK" then
+            ns:Log("INFO", "Core", "OneLock_Procs inactive for non-Warlock character (" .. tostring(playerClass) .. ").")
+            return
+        end
+
         if ns.Alerts and ns.Alerts.Initialize then
             ns.Alerts:Initialize()
         end
         ns:Log("INFO", "Core", "OneLock_Procs v" .. ns.version .. " initialized.")
     elseif event == "PLAYER_LOGIN" then
-        ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/olprocs|r for options.")
+        local _, playerClass = UnitClass("player")
+        if playerClass == "WARLOCK" then
+            ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/olprocs|r for options.")
+        end
     end
 end)
 

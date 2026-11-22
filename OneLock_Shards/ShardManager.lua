@@ -419,6 +419,11 @@ end
 -- Event Handling
 -------------------------------------------------------------------------------
 function ShardManager:Initialize()
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        return
+    end
+
     CreatePurgeButton()
 
     if ns.db and ns.db.autoCreatePurgeMacro then

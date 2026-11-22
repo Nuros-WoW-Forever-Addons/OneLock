@@ -535,6 +535,11 @@ end
 -- Event Listener (UNIT_SPELLCAST_SUCCEEDED)
 -------------------------------------------------------------------------------
 function SoulstoneTracker:Initialize()
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        return
+    end
+
     CreateSoulstoneHUD()
 
     local eventFrame = CreateFrame("Frame", "OneLock_SoulstoneTracker_EventFrame")

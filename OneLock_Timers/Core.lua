@@ -134,6 +134,12 @@ end
 -- Slash Command Handler (/onelock, /ol)
 -------------------------------------------------------------------------------
 local function HandleSlashCommand(msg)
+    local _, playerClass = UnitClass("player")
+    if playerClass ~= "WARLOCK" then
+        ns:Print(string.format("Inactive on this character (%s). OneLock is a Warlock-only suite.", tostring(playerClass)))
+        return
+    end
+
     msg = msg and msg:trim() or ""
     local cmd, arg = msg:match("^(%S+)%s*(.-)$")
     cmd = cmd and cmd:lower() or ""
@@ -282,6 +288,13 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
         InitDB()
         PurgeFromMovableFrames()
+
+        local _, playerClass = UnitClass("player")
+        if playerClass ~= "WARLOCK" then
+            ns:Log("INFO", "Core", "OneLock_Timers inactive for non-Warlock character (" .. tostring(playerClass) .. ").")
+            return
+        end
+
         if ns.Display and ns.Display.Initialize then
             ns.Display:Initialize()
         end
@@ -291,8 +304,11 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         ns:Log("INFO", "Core", "OneLock_Timers v" .. ns.version .. " loaded successfully.")
     elseif event == "PLAYER_LOGIN" then
         PurgeFromMovableFrames()
-        ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/ol|r for options.")
-        ns:Log("INFO", "Core", "PLAYER_LOGIN initialized.")
+        local _, playerClass = UnitClass("player")
+        if playerClass == "WARLOCK" then
+            ns:Print("Loaded v" .. ns.version .. ". Type |cffffd100/ol|r for options.")
+            ns:Log("INFO", "Core", "PLAYER_LOGIN initialized.")
+        end
     end
 end)
 
