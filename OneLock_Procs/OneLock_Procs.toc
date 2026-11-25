@@ -2,7 +2,7 @@
 ## Title: OneLock: Procs
 ## Notes: High-visibility proc alerts (Shadow Trance, Backlash) and CC immunity alerts for Warlocks on WoW Forever.
 ## Author: Nuros
-## Version: 0.1.12
+## Version: 0.1.13
 ## IconTexture: Interface\Icons\Spell_Shadow_Twilight
 ## SavedVariables: OneLockProcsDB
 ## OptionalDeps: OneSwatter

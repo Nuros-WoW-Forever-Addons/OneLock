@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-11-24
+
 ### Fixed
 - **Foreign Warlock DoT Isolation (`OneLock_Timers/Tracker.lua`)**:
   - Fixed issue where DoT timers were picking up spells cast by other Warlocks in dungeons, raids, and open-world groups.
