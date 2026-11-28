@@ -214,6 +214,12 @@ When picking up development on this addon:
 ## ✅ Recent Completed Work (Latest Spins)
 
 ### Spin 0.1.16 (Radial Utility HUD Wheels: Stones Ring & Demons Ring)
+- **Circular Masking & Dedicated Text Overlays (`Rings.lua`)**:
+  - Replaced native square `UI-ActionButton-Border` and broken legacy mask with custom dedicated circular mask and ring textures (`CircleMask.tga` and `CircleRing.tga`).
+  - Utilized modern `CreateMaskTexture()` and `AddMaskTexture()` to cleanly crop icon corners to a smooth circle, resolving the square silhouette defect.
+  - Placed shard and stone count text on a dedicated child `overlayFrame` at `btn:GetFrameLevel() + 10` so text renders crisp and visible above the cooldown spiral.
+- **Accurate Spellbook Known Filtering (`Rings.lua`)**:
+  - Filtered out `FUTURESPELL` and offspec entries in `C_SpellBook.GetSpellBookItemType`, ensuring unlearned higher-level abilities (Firestone, Spellstone, Felhunter) remain hidden until actually trained.
 - **Reagent Bag (Slot 5) Integration (`ShardManager.lua`, `Rings.lua`, `OptionsUI.lua`)**:
   - Dynamically calculates maximum player equipped bags via `NUM_TOTAL_EQUIPPED_BAG_SLOTS` (supporting bag index 5).
   - Shard inventory scanning, counting, and auto-sorting now natively support Soul Bags equipped in the character's Reagent Bag slot.

@@ -93,7 +93,17 @@ end
 
 local function IsSpellKnownSafe(spellIdOrName)
     if not spellIdOrName then return false end
+
+    -- 1. Check C_SpellBook.IsSpellKnown (Camelot / modern engine primary)
     if type(spellIdOrName) == "number" then
+        if C_SpellBook and C_SpellBook.IsSpellKnown then
+            local ok, known = pcall(C_SpellBook.IsSpellKnown, spellIdOrName)
+            if ok and known ~= nil then return known end
+        end
+        if C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook then
+            local ok, known = pcall(C_SpellBook.IsSpellKnownOrInSpellBook, spellIdOrName)
+            if ok and known ~= nil then return known end
+        end
         if C_Spell and C_Spell.IsSpellKnownOrOverridesKnown then
             local ok, known = pcall(C_Spell.IsSpellKnownOrOverridesKnown, spellIdOrName)
             if ok and known ~= nil then return known end
@@ -102,17 +112,9 @@ local function IsSpellKnownSafe(spellIdOrName)
             local ok, known = pcall(C_Spell.IsSpellKnown, spellIdOrName)
             if ok and known ~= nil then return known end
         end
-        if _G.IsPlayerSpell then
-            local ok, known = pcall(_G.IsPlayerSpell, spellIdOrName)
-            if ok and known ~= nil then return known end
-        end
-        if _G.IsSpellKnown then
-            local ok, known = pcall(_G.IsSpellKnown, spellIdOrName)
-            if ok and known ~= nil then return known end
-        end
     end
 
-    -- Modern & legacy spellbook name check fallback
+    -- 2. Resolve Spell Name
     local targetName = type(spellIdOrName) == "string" and spellIdOrName or nil
     if not targetName and type(spellIdOrName) == "number" then
         if C_Spell and C_Spell.GetSpellName then
@@ -122,12 +124,29 @@ local function IsSpellKnownSafe(spellIdOrName)
         end
     end
 
+    -- 3. Spellbook Scan (filtering out off-spec / future / unlearned spells)
     if targetName and targetName ~= "" then
         local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
         if C_SpellBook and C_SpellBook.GetSpellBookItemName then
             for i = 1, 150 do
                 local ok, name = pcall(C_SpellBook.GetSpellBookItemName, i, bank)
                 if ok and name and name == targetName then
+                    -- Verify item type or not offspec/future
+                    if C_SpellBook.GetSpellBookItemType then
+                        local okType, itemType = pcall(C_SpellBook.GetSpellBookItemType, i, bank)
+                        if okType and itemType then
+                            -- Enum.SpellBookItemType.Spell is 1 or string "SPELL"
+                            if itemType == 1 or itemType == "SPELL" then
+                                return true
+                            elseif itemType == "FUTURESPELL" or itemType == "FLYOUT" then
+                                return false
+                            end
+                        end
+                    end
+                    if C_SpellBook.IsSpellBookItemOffSpec then
+                        local okOff, isOff = pcall(C_SpellBook.IsSpellBookItemOffSpec, i, bank)
+                        if okOff and isOff then return false end
+                    end
                     return true
                 end
             end
@@ -136,6 +155,12 @@ local function IsSpellKnownSafe(spellIdOrName)
             for i = 1, 150 do
                 local ok, name = pcall(_G.GetSpellBookItemName, i, "spell")
                 if ok and name and name == targetName then
+                    if _G.GetSpellBookItemInfo then
+                        local okInfo, itemType = pcall(_G.GetSpellBookItemInfo, i, "spell")
+                        if okInfo and (itemType == "FUTURESPELL" or itemType == "FLYOUT") then
+                            return false
+                        end
+                    end
                     return true
                 end
             end
@@ -196,6 +221,9 @@ local function GetSoulShardCount()
     return count
 end
 
+local MASK_TEXTURE = [[Interface\AddOns\OneLock_Rings\Textures\CircleMask.tga]]
+local RING_TEXTURE = [[Interface\AddOns\OneLock_Rings\Textures\CircleRing.tga]]
+
 -------------------------------------------------------------------------------
 -- Circular Button Creation Helper
 -------------------------------------------------------------------------------
@@ -204,53 +232,71 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     btn:SetSize(size, size)
     btn:RegisterForClicks("AnyUp", "AnyDown")
 
+    -- Circular mask object for all button textures
+    local mask = btn.CreateMaskTexture and btn:CreateMaskTexture()
+    if type(mask) == "table" then
+        mask:SetTexture(MASK_TEXTURE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        mask:SetAllPoints(btn)
+        btn.mask = mask
+    end
+
     -- Circular background backing
     local bg = btn:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(btn)
-    bg:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-    bg:SetVertexColor(0.10, 0.07, 0.15, 0.95)
+    bg:SetTexture(MASK_TEXTURE)
+    bg:SetVertexColor(0.08, 0.05, 0.12, 0.95)
+    if mask and bg.AddMaskTexture then
+        bg:AddMaskTexture(mask)
+    end
     btn.bg = bg
 
-    -- Outer border rim: clean, crisp, thin circular metallic ring
-    local border = btn:CreateTexture(nil, "OVERLAY")
-    -- Ring sized at size + 6px (3px padding all around), so the ring is thin and does not cover the icon
-    border:SetSize(size + 6, size + 6)
-    border:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-    border:SetBlendMode("ADD")
-    border:SetVertexColor(0.85, 0.65, 1.0, 0.9)
-    btn.border = border
-
-    -- Main Icon (circular masked)
+    -- Main Icon
     local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    icon:SetSize(size, size)
-    if icon.SetMask then
-        icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+    icon:SetAllPoints(btn)
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    if mask and icon.AddMaskTexture then
+        icon:AddMaskTexture(mask)
+    elseif icon.SetMask then
+        icon:SetMask(MASK_TEXTURE)
     end
     btn.icon = icon
 
     -- Cooldown spiral (circular masked)
     local cd = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
-    cd:SetAllPoints(icon)
+    cd:SetAllPoints(btn)
     cd:SetDrawEdge(true)
     cd:SetSwipeColor(0, 0, 0, 0.75)
     btn.cd = cd
 
     -- Highlight texture on mouseover
     local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints(icon)
+    highlight:SetAllPoints(btn)
     highlight:SetTexture("Interface\\Buttons\\ButtonHilight-Round")
     highlight:SetBlendMode("ADD")
     btn.highlight = highlight
 
+    -- Outer border rim: clean, concentric, thin circular metallic ring
+    local border = btn:CreateTexture(nil, "OVERLAY", nil, 1)
+    border:SetAllPoints(btn)
+    border:SetTexture(RING_TEXTURE)
+    border:SetVertexColor(0.85, 0.65, 1.0, 0.9)
+    btn.border = border
+
+    -- Count Overlay Frame to guarantee fontstring is above cooldown spiral
+    local overlayFrame = CreateFrame("Frame", nil, btn)
+    overlayFrame:SetAllPoints(btn)
+    overlayFrame:SetFrameLevel(btn:GetFrameLevel() + 10)
+    btn.overlayFrame = overlayFrame
+
     -- Count FontString
-    local count = btn:CreateFontString(nil, "OVERLAY", isCenter and "GameFontNormalHuge" or "GameFontNormal")
+    local count = overlayFrame:CreateFontString(nil, "OVERLAY", isCenter and "GameFontNormalHuge" or "GameFontNormal")
     if isCenter then
-        count:SetPoint("CENTER", btn, "CENTER", 0, 0)
+        count:SetPoint("CENTER", overlayFrame, "CENTER", 0, 0)
     else
-        count:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)
+        count:SetPoint("BOTTOMRIGHT", overlayFrame, "BOTTOMRIGHT", -2, 2)
     end
+    count:SetShadowOffset(1, -1)
+    count:SetShadowColor(0, 0, 0, 1)
     btn.countText = count
 
     return btn

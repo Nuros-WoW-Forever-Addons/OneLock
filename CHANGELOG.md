@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Clean Circular Icon Masking & Rim Alignment (`OneLock_Rings/Rings.lua`)**:
+  - Replaced native square `UI-ActionButton-Border` and broken legacy mask with custom dedicated circular mask and ring textures (`CircleMask.tga` and `CircleRing.tga`).
+  - Implemented modern WoW 11.0+ / 1.60.1 `CreateMaskTexture()` and `AddMaskTexture()` pipeline to perfectly clip icon corners to a smooth circle, eliminating the square actionbutton silhouette.
+  - Sized the circular metallic rim to wrap the exact outer perimeter of each button with clean, concentric borders.
+- **Shard & Stone Text Visibility Over Cooldowns (`OneLock_Rings/Rings.lua`)**:
+  - Created a dedicated `overlayFrame` elevated to `btn:GetFrameLevel() + 10` for `countText`, preventing the `CooldownFrameTemplate` from obscuring shard counts and item quantities.
+- **Accurate Spellbook Filtering for Unlearned Abilities (`OneLock_Rings/Rings.lua`)**:
+  - Upgraded `IsSpellKnownSafe()` to inspect `C_SpellBook.GetSpellBookItemType` and `C_SpellBook.IsSpellBookItemOffSpec` to filter out `FUTURESPELL` (unlearned spells from higher levels) and unlearned ranks.
+  - Correctly hides Firestone, Spellstone, and Felhunter until learned.
+
 ### Added
 - **Reagent Bag (Slot 5) Support (`OneLock_Shards`, `OneLock_Rings`, `OptionsUI`)**:
   - Added dynamic player bag detection via `NUM_TOTAL_EQUIPPED_BAG_SLOTS` supporting bag slot 5 (the modern Reagent Bag where Soul Shard bags like the Succubus quest reward are equipped).
