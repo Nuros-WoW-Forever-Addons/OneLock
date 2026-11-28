@@ -214,6 +214,15 @@ When picking up development on this addon:
 ## ✅ Recent Completed Work (Latest Spins)
 
 ### Spin 0.1.16 (Radial Utility HUD Wheels: Stones Ring & Demons Ring)
+- **Pure Concentric Border Ring & Notch Removal (`Textures/CircleRing.tga`)**:
+  - Rebuilt `CircleRing.tga` with 360-degree rotational symmetry from the clean quadrant, completely removing the tracking-blip notch in the bottom-right.
+- **Centered Shard and Stone Counts (`Rings.lua`)**:
+  - Centered all count labels over their respective icons (`count:SetPoint("CENTER", overlayFrame, "CENTER", 0, 0)`).
+  - Center Shard Core displays live Soul Shard count, shifting to alert crimson when exceeding the configured cap.
+  - Satellite stones display centered counts with high-contrast text and drop shadows.
+- **Native Engine Spell Known Detection (`Rings.lua`)**:
+  - Implemented `C_SpellBook.FindSpellBookSlotForSpell(spellIdentifier, false, false, false, false)`, which returns `nil` for unlearned abilities (explicitly excluding future spells and offspec entries).
+  - Unlearned spells (Firestone, Spellstone, Felhunter) now evaluate cleanly as unlearned and stay hidden until unlocked.
 - **Circular Masking & Dedicated Text Overlays (`Rings.lua`)**:
   - Replaced native square `UI-ActionButton-Border` and broken legacy mask with custom dedicated circular mask and ring textures (`CircleMask.tga` and `CircleRing.tga`).
   - Utilized modern `CreateMaskTexture()` and `AddMaskTexture()` to cleanly crop icon corners to a smooth circle, resolving the square silhouette defect.

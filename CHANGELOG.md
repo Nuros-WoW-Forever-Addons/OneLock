@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Notch Removal & Pure Concentric Ring (`OneLock_Rings/Textures/CircleRing.tga`)**:
+  - Eliminated the small tracking-blip circle artifact in the bottom-right quadrant of `CircleRing.tga` by rebuilding the texture with 360-degree rotational symmetry from the clean quadrant.
+- **Centered Shard & Stone Counts with Elevated Overlays (`OneLock_Rings/Rings.lua`)**:
+  - Centered all count numbers (`count:SetPoint("CENTER", overlayFrame, "CENTER", 0, 0)`) directly over each icon:
+    - Center Shard count renders prominently in the middle of the Soul Shard core, displaying current inventory count and shifting to alert crimson when exceeding the cap.
+    - Satellite stone counts render centered directly over each stone button with high-contrast text and drop shadows.
+- **Reliable Spellbook Detection for Unlearned Spells (`OneLock_Rings/Rings.lua`)**:
+  - Implemented primary spell detection using `C_SpellBook.FindSpellBookSlotForSpell(spellIdentifier, false, false, false, false)`, which returns `nil` for unlearned abilities (explicitly excluding future spells and offspec entries).
+  - Unlearned spells (e.g. Firestone, Spellstone, Felhunter) now reliably evaluate as unlearned and stay hidden until trained.
+
+### Fixed
 - **Clean Circular Icon Masking & Rim Alignment (`OneLock_Rings/Rings.lua`)**:
   - Replaced native square `UI-ActionButton-Border` and broken legacy mask with custom dedicated circular mask and ring textures (`CircleMask.tga` and `CircleRing.tga`).
   - Implemented modern WoW 11.0+ / 1.60.1 `CreateMaskTexture()` and `AddMaskTexture()` pipeline to perfectly clip icon corners to a smooth circle, eliminating the square actionbutton silhouette.

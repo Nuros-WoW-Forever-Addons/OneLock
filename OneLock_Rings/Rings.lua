@@ -94,27 +94,30 @@ end
 local function IsSpellKnownSafe(spellIdOrName)
     if not spellIdOrName then return false end
 
-    -- 1. Check C_SpellBook.IsSpellKnown (Camelot / modern engine primary)
+    -- 1. Primary Native Engine Check: FindSpellBookSlotForSpell with includeFutureSpells=false, includeOffSpec=false
+    if C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell then
+        local ok, slotIndex, spellBank = pcall(C_SpellBook.FindSpellBookSlotForSpell, spellIdOrName, false, false, false, false)
+        if ok and slotIndex and slotIndex > 0 then
+            return true
+        elseif ok and slotIndex == nil then
+            -- Explicitly not in spellbook as an active/known spell
+            return false
+        end
+    end
+
+    -- 2. Fallback: C_SpellBook.IsSpellKnown (Camelot / modern engine)
     if type(spellIdOrName) == "number" then
         if C_SpellBook and C_SpellBook.IsSpellKnown then
             local ok, known = pcall(C_SpellBook.IsSpellKnown, spellIdOrName)
             if ok and known ~= nil then return known end
         end
-        if C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook then
-            local ok, known = pcall(C_SpellBook.IsSpellKnownOrInSpellBook, spellIdOrName)
-            if ok and known ~= nil then return known end
-        end
-        if C_Spell and C_Spell.IsSpellKnownOrOverridesKnown then
-            local ok, known = pcall(C_Spell.IsSpellKnownOrOverridesKnown, spellIdOrName)
-            if ok and known ~= nil then return known end
-        end
-        if C_Spell and C_Spell.IsSpellKnown then
-            local ok, known = pcall(C_Spell.IsSpellKnown, spellIdOrName)
-            if ok and known ~= nil then return known end
+        if C_SpellBook and C_SpellBook.IsSpellInSpellBook then
+            local ok, inBook = pcall(C_SpellBook.IsSpellInSpellBook, spellIdOrName)
+            if ok and inBook ~= nil then return inBook end
         end
     end
 
-    -- 2. Resolve Spell Name
+    -- 3. Resolve Spell Name for manual spellbook slot iteration
     local targetName = type(spellIdOrName) == "string" and spellIdOrName or nil
     if not targetName and type(spellIdOrName) == "number" then
         if C_Spell and C_Spell.GetSpellName then
@@ -124,18 +127,17 @@ local function IsSpellKnownSafe(spellIdOrName)
         end
     end
 
-    -- 3. Spellbook Scan (filtering out off-spec / future / unlearned spells)
+    -- 4. Manual Spellbook Scan (filtering out off-spec / future / unlearned spells)
     if targetName and targetName ~= "" then
         local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
         if C_SpellBook and C_SpellBook.GetSpellBookItemName then
             for i = 1, 150 do
                 local ok, name = pcall(C_SpellBook.GetSpellBookItemName, i, bank)
                 if ok and name and name == targetName then
-                    -- Verify item type or not offspec/future
+                    -- Verify item type
                     if C_SpellBook.GetSpellBookItemType then
                         local okType, itemType = pcall(C_SpellBook.GetSpellBookItemType, i, bank)
                         if okType and itemType then
-                            -- Enum.SpellBookItemType.Spell is 1 or string "SPELL"
                             if itemType == 1 or itemType == "SPELL" then
                                 return true
                             elseif itemType == "FUTURESPELL" or itemType == "FLYOUT" then
@@ -288,13 +290,9 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     overlayFrame:SetFrameLevel(btn:GetFrameLevel() + 10)
     btn.overlayFrame = overlayFrame
 
-    -- Count FontString
-    local count = overlayFrame:CreateFontString(nil, "OVERLAY", isCenter and "GameFontNormalHuge" or "GameFontNormal")
-    if isCenter then
-        count:SetPoint("CENTER", overlayFrame, "CENTER", 0, 0)
-    else
-        count:SetPoint("BOTTOMRIGHT", overlayFrame, "BOTTOMRIGHT", -2, 2)
-    end
+    -- Count FontString (Centered on each button with high contrast outline & shadow)
+    local count = overlayFrame:CreateFontString(nil, "OVERLAY", isCenter and "GameFontNormalHuge" or "GameFontNormalLarge")
+    count:SetPoint("CENTER", overlayFrame, "CENTER", 0, 0)
     count:SetShadowOffset(1, -1)
     count:SetShadowColor(0, 0, 0, 1)
     btn.countText = count
@@ -640,11 +638,13 @@ function Rings:UpdateStones()
                     btn.icon:SetDesaturated(false)
                     btn.countText:SetText(tostring(count))
                     btn.countText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+                    btn.countText:Show()
                     btn.border:SetVertexColor(0.85, 0.60, 1.00, 1.0)
                 else
                     btn.icon:SetDesaturated(true)
                     btn.countText:SetText("0")
-                    btn.countText:SetTextColor(0.65, 0.65, 0.65, 0.9)
+                    btn.countText:SetTextColor(0.70, 0.70, 0.70, 0.85)
+                    btn.countText:Show()
                     btn.border:SetVertexColor(0.35, 0.30, 0.45, 0.8)
                 end
 
