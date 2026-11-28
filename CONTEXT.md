@@ -214,6 +214,14 @@ When picking up development on this addon:
 ## ✅ Recent Completed Work (Latest Spins)
 
 ### Spin 0.1.16 (Radial Utility HUD Wheels: Stones Ring & Demons Ring)
+- **Combat Secret Value Protection (`Rings.lua`)**:
+  - Gated all spell and item cooldown checks (`UpdateDemons`, `UpdateStones`) with `IsSecret(dur)`, `IsSecret(start)`, and `IsSecret(enable)` to prevent fatal Lua errors when entering combat under execution taint.
+  - Passes values directly to `Cooldown:SetCooldown()` via `pcall` when flagged secret by the engine.
+- **Concentric Circular Border Rings (`Rings.lua`)**:
+  - Eliminated legacy `MiniMap-TrackingBorder` which had a built-in tracking icon offset causing the borders to appear small, distorted, and off-center in the top-left quadrant of buttons.
+  - Implemented concentric circular `UI-Character-Info-Honor-RewardRing` atlas (with fallback to `UI-Achievement-Guild-Ring`) scaled at `1.48x` button size and centered `(0, 0)`.
+- **Low-Rank Item Texture Caching (`Rings.lua`)**:
+  - Ordered `HEALTHSTONES`, `SOULSTONES`, `SPELLSTONES`, and `FIRESTONES` starting with Rank 1 item IDs so `GetItemTextureSafe` returns valid artwork on characters who have not yet learned high-level ranks.
 - **Radial Stones Ring (`OneLock_Rings/Rings.lua`)**:
   - Center button: Displays live Soul Shard inventory count with color warnings (white = within limit, amber/red = cap exceeded). Clicking the center button out of combat purges 1 excess shard using `ShardManager:PurgeOneExcessShard()`.
   - 4 satellite action buttons at clock points (radius $R = 50$):

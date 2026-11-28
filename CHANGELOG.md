@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Combat Secret Number Protection on Cooldowns (`OneLock_Rings/Rings.lua`)**:
+  - Resolved fatal Lua error (`Interface/AddOns/OneLock_Rings/Rings.lua:537: attempt to compare local 'dur' (a secret number value, while execution tainted by 'OneLock_Rings')`).
+  - Added `IsSecret` (`issecretvalue`) validation to `UpdateDemons()` and `UpdateStones()` before performing numeric comparisons (`dur > 0`, `enable == 1`).
+  - When secret value flags are active during combat, passes `start` and `dur` directly to `Cooldown:SetCooldown()` via `pcall` without comparison or arithmetic branching.
+- **Concentric Circular Border Rings & Alignment (`OneLock_Rings/Rings.lua`)**:
+  - Replaced asymmetric legacy `MiniMap-TrackingBorder` with native concentric `UI-Character-Info-Honor-RewardRing` atlas (with safe fallback to `UI-Achievement-Guild-Ring`).
+  - Adjusted border scale and centered points to perfectly encapsulate circular masked action buttons with zero offset or undersizing.
+- **Item Artwork Fallback for Low-Level Characters (`OneLock_Rings/Rings.lua`)**:
+  - Reversed fallback search array ordering (lowest level rank first) so characters who have not yet learned high-rank stones (e.g. Master/Major) display valid iconic artwork instead of red question marks (`134400`) when count is 0.
+
 ### Added
 - **Radial Utility HUD Wheels (`OneLock_Rings`)**:
   - Implemented circular radial HUD modules with clock point positioning:

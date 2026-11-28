@@ -10,10 +10,11 @@ ns.Rings = Rings
 local SOUL_SHARD_ITEM_ID = 6265
 
 -- Item IDs and Spell IDs
-local HEALTHSTONES = { 22103, 19013, 19012, 9421, 19011, 19010, 5510, 19009, 19008, 5509, 19007, 19006, 5511, 19005, 19004, 5512 }
-local SOULSTONES   = { 22116, 16896, 16895, 16893, 16892, 5232 }
-local SPELLSTONES  = { 22105, 13603, 13602, 5522 }
-local FIRESTONES   = { 22111, 16954, 16953, 16952, 1254 }
+-- Ordered by lowest rank first so fallback texture is always an obtainable/known rank
+local HEALTHSTONES = { 5512, 19004, 19005, 5511, 19006, 19007, 5509, 19008, 19009, 5510, 19010, 19011, 9421, 19012, 19013, 22103 }
+local SOULSTONES   = { 5232, 16892, 16893, 16895, 16896, 22116 }
+local SPELLSTONES  = { 5522, 13602, 13603, 22105 }
+local FIRESTONES   = { 1254, 16952, 16953, 16954, 22111 }
 
 local SPELL_SUMMON_RITUAL    = 698    -- Ritual of Summoning
 local SPELL_SUMMON_IMP       = 688    -- Summon Imp
@@ -22,6 +23,22 @@ local SPELL_SUMMON_SUCCUBUS  = 712    -- Summon Succubus
 local SPELL_SUMMON_FELHUNTER = 691    -- Summon Felhunter
 
 local backdropTemplate = BackdropTemplateMixin and "BackdropTemplate" or nil
+
+-------------------------------------------------------------------------------
+-- Secret Value Protection (WoW Forever Interface 16001 / Camelot Engine)
+-------------------------------------------------------------------------------
+local function IsSecret(val)
+    return issecretvalue and issecretvalue(val)
+end
+
+local function SafeHasAtlas(atlasName)
+    if not atlasName then return false end
+    if C_Texture and C_Texture.GetAtlasInfo then
+        local ok, info = pcall(C_Texture.GetAtlasInfo, atlasName)
+        return ok and info ~= nil
+    end
+    return false
+end
 
 -------------------------------------------------------------------------------
 -- Helper: Safe Item and Spell Texture Queries
@@ -77,16 +94,19 @@ end
 local function CountItemsInBags(itemIdList)
     local total = 0
     local highestFoundId = nil
+    local highestFoundIdx = 0
     for bag = 0, 4 do
         local numSlots = (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerNumSlots(bag)) or (_G.GetContainerNumSlots and _G.GetContainerNumSlots(bag)) or 0
         for slot = 1, numSlots do
             local id = (C_Container and C_Container.GetContainerItemID and C_Container.GetContainerItemID(bag, slot)) or (_G.GetContainerItemID and _G.GetContainerItemID(bag, slot))
             if id then
-                for _, targetId in ipairs(itemIdList) do
+                for idx, targetId in ipairs(itemIdList) do
                     if id == targetId then
                         total = total + 1
-                        if not highestFoundId then
+                        -- Since itemIdList is ordered lowest to highest, keep the highest index found
+                        if idx > highestFoundIdx then
                             highestFoundId = id
+                            highestFoundIdx = idx
                         end
                         break
                     end
@@ -122,30 +142,36 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     btn:SetSize(size, size)
     btn:RegisterForClicks("AnyUp", "AnyDown")
 
-    -- Border ring / shadow backing
+    -- Circular background backing
     local bg = btn:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(btn)
     bg:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
     bg:SetVertexColor(0.12, 0.08, 0.18, 0.95)
     btn.bg = bg
 
-    -- Outer border ring
+    -- Outer border ring (perfectly concentric circular gold/violet frame)
     local border = btn:CreateTexture(nil, "OVERLAY")
-    border:SetPoint("TOPLEFT", btn, "TOPLEFT", -2, 2)
-    border:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2)
-    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    -- RewardRing atlas is designed to frame a 28-34px circular icon when sized at size * 1.5
+    local ringScale = 1.48
+    border:SetSize(size * ringScale, size * ringScale)
+    border:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    if SafeHasAtlas("UI-Character-Info-Honor-RewardRing") then
+        border:SetAtlas("UI-Character-Info-Honor-RewardRing")
+    else
+        border:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Guild-Ring")
+    end
     btn.border = border
 
-    -- Main Icon
+    -- Main Icon (circular masked)
     local icon = btn:CreateTexture(nil, "ARTWORK")
     icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    icon:SetSize(size - 4, size - 4)
+    icon:SetSize(size, size)
     if icon.SetMask then
         icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
     end
     btn.icon = icon
 
-    -- Cooldown spiral
+    -- Cooldown spiral (circular masked)
     local cd = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
     cd:SetAllPoints(icon)
     cd:SetDrawEdge(true)
@@ -511,11 +537,26 @@ function Rings:UpdateStones()
                 btn.border:SetVertexColor(0.35, 0.30, 0.45, 0.8)
             end
 
-            -- Item cooldown
+            -- Item cooldown (protected against secret values in combat)
             local start, dur, enable = GetItemCooldownSafe(displayId)
-            if btn.cd and start and dur and dur > 0 and enable and enable > 0 then
-                btn.cd:SetCooldown(start, dur)
-            elseif btn.cd then
+            local hasCooldown = false
+            if start and dur and enable then
+                if not IsSecret(dur) and not IsSecret(start) and not IsSecret(enable) then
+                    if dur > 0 and (enable == 1 or enable == true) then
+                        hasCooldown = true
+                        if btn.cd and btn.cd.SetCooldown then
+                            btn.cd:SetCooldown(start, dur)
+                        end
+                    end
+                else
+                    -- Under secret taint, pass start and dur directly to SetCooldown without comparisons
+                    hasCooldown = true
+                    if btn.cd and btn.cd.SetCooldown then
+                        pcall(btn.cd.SetCooldown, btn.cd, start, dur)
+                    end
+                end
+            end
+            if not hasCooldown and btn.cd and btn.cd.Clear then
                 btn.cd:Clear()
             end
         end
@@ -534,9 +575,24 @@ function Rings:UpdateDemons()
     for _, btn in ipairs(spells) do
         if btn and btn.spellId then
             local start, dur, enable = GetSpellCooldownSafe(btn.spellId)
-            if btn.cd and start and dur and dur > 0 and enable and enable > 0 then
-                btn.cd:SetCooldown(start, dur)
-            elseif btn.cd then
+            local hasCooldown = false
+            if start and dur and enable then
+                if not IsSecret(dur) and not IsSecret(start) and not IsSecret(enable) then
+                    if dur > 0 and (enable == 1 or enable == true) then
+                        hasCooldown = true
+                        if btn.cd and btn.cd.SetCooldown then
+                            btn.cd:SetCooldown(start, dur)
+                        end
+                    end
+                else
+                    -- Under secret taint, pass start and dur directly to SetCooldown without comparisons
+                    hasCooldown = true
+                    if btn.cd and btn.cd.SetCooldown then
+                        pcall(btn.cd.SetCooldown, btn.cd, start, dur)
+                    end
+                end
+            end
+            if not hasCooldown and btn.cd and btn.cd.Clear then
                 btn.cd:Clear()
             end
         end
