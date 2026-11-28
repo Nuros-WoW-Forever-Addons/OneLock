@@ -53,12 +53,19 @@ end
 local isCleaningUp = false
 local lastAlertedShardCount = 0
 
+local function GetMaxPlayerBag()
+    return (NUM_TOTAL_EQUIPPED_BAG_SLOTS and NUM_TOTAL_EQUIPPED_BAG_SLOTS > 0 and NUM_TOTAL_EQUIPPED_BAG_SLOTS)
+        or (NUM_BAG_SLOTS and NUM_BAG_SLOTS > 0 and NUM_BAG_SLOTS)
+        or 5
+end
+
 function ShardManager:ScanBags()
     local count = 0
     local shardLocations = {} -- list of { bag = bag, slot = slot }
+    local maxBag = GetMaxPlayerBag()
 
-    -- Bags 0 (backpack) through 4
-    for bag = 0, 4 do
+    -- Bags 0 (backpack) through maxBag (4 for standard bags, 5 for reagent bag)
+    for bag = 0, maxBag do
         local numSlots = GetNumSlots(bag)
         if numSlots and numSlots > 0 then
             for slot = 1, numSlots do
@@ -222,7 +229,8 @@ function ShardManager:SortShards(explicitTargetBag)
         targetBag = (ns.db and ns.db.sortTargetBag ~= nil and ns.db.sortTargetBag) or 4
     end
     targetBag = tonumber(targetBag) or 4
-    if targetBag < 0 or targetBag > 4 then return false end
+    local maxBag = GetMaxPlayerBag()
+    if targetBag < 0 or targetBag > maxBag then return false end
 
     local numSlots = GetNumSlots(targetBag)
     if not numSlots or numSlots == 0 then
@@ -231,7 +239,7 @@ function ShardManager:SortShards(explicitTargetBag)
 
     -- 1. Identify misplaced soul shards not in targetBag
     local misplaced = {}
-    for bag = 0, 4 do
+    for bag = 0, maxBag do
         if bag ~= targetBag then
             local slots = GetNumSlots(bag)
             if slots and slots > 0 then
@@ -281,7 +289,7 @@ function ShardManager:SortShards(explicitTargetBag)
 
     if moved > 0 then
         self:ScanBags()
-        local bagName = (targetBag == 0 and "Backpack") or ("Bag " .. targetBag)
+        local bagName = (targetBag == 0 and "Backpack") or (targetBag == 5 and "Reagent Bag (5)") or ("Bag " .. targetBag)
         ns:Print(string.format("Sorted %d Soul Shard(s) into |cffffd100%s|r.", moved, bagName))
         ns:Log("INFO", "ShardManager", string.format("Sorted %d Soul Shards into bag %d.", moved, targetBag))
         return true

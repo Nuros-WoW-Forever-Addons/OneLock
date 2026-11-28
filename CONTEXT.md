@@ -214,6 +214,16 @@ When picking up development on this addon:
 ## ✅ Recent Completed Work (Latest Spins)
 
 ### Spin 0.1.16 (Radial Utility HUD Wheels: Stones Ring & Demons Ring)
+- **Reagent Bag (Slot 5) Integration (`ShardManager.lua`, `Rings.lua`, `OptionsUI.lua`)**:
+  - Dynamically calculates maximum player equipped bags via `NUM_TOTAL_EQUIPPED_BAG_SLOTS` (supporting bag index 5).
+  - Shard inventory scanning, counting, and auto-sorting now natively support Soul Bags equipped in the character's Reagent Bag slot.
+  - Added `"Reagent Bag (5)"` option to the Target Bag Slot stepper in Options UI.
+- **Dynamic Known Spell Visibility (`Rings.lua`)**:
+  - Implemented `IsSpellKnownSafe()` checking `C_Spell.IsSpellKnownOrOverridesKnown`, `C_Spell.IsSpellKnown`, and `C_SpellBook.GetSpellBookItemName`.
+  - Hides unlearned stones (e.g. Firestone, Spellstone) and demons (e.g. Felhunter) until unlocked/learned.
+  - Dynamically refreshes visibility on `SPELLS_CHANGED` and `LEARNED_SPELL_IN_TAB`.
+- **Thin Circular Action Border Rim (`Rings.lua`)**:
+  - Replaced thick honor ring with clean circular action rim (`Interface\Buttons\UI-ActionButton-Border`) sized at `size + 6` (3px uniform padding), ensuring internal spell and item artwork remains completely visible.
 - **Combat Secret Value Protection (`Rings.lua`)**:
   - Gated all spell and item cooldown checks (`UpdateDemons`, `UpdateStones`) with `IsSecret(dur)`, `IsSecret(start)`, and `IsSecret(enable)` to prevent fatal Lua errors when entering combat under execution taint.
   - Passes values directly to `Cooldown:SetCooldown()` via `pcall` when flagged secret by the engine.

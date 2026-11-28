@@ -91,11 +91,72 @@ local function GetSpellCooldownSafe(spellId)
     return 0, 0, 0
 end
 
+local function IsSpellKnownSafe(spellIdOrName)
+    if not spellIdOrName then return false end
+    if type(spellIdOrName) == "number" then
+        if C_Spell and C_Spell.IsSpellKnownOrOverridesKnown then
+            local ok, known = pcall(C_Spell.IsSpellKnownOrOverridesKnown, spellIdOrName)
+            if ok and known ~= nil then return known end
+        end
+        if C_Spell and C_Spell.IsSpellKnown then
+            local ok, known = pcall(C_Spell.IsSpellKnown, spellIdOrName)
+            if ok and known ~= nil then return known end
+        end
+        if _G.IsPlayerSpell then
+            local ok, known = pcall(_G.IsPlayerSpell, spellIdOrName)
+            if ok and known ~= nil then return known end
+        end
+        if _G.IsSpellKnown then
+            local ok, known = pcall(_G.IsSpellKnown, spellIdOrName)
+            if ok and known ~= nil then return known end
+        end
+    end
+
+    -- Modern & legacy spellbook name check fallback
+    local targetName = type(spellIdOrName) == "string" and spellIdOrName or nil
+    if not targetName and type(spellIdOrName) == "number" then
+        if C_Spell and C_Spell.GetSpellName then
+            targetName = C_Spell.GetSpellName(spellIdOrName)
+        elseif _G.GetSpellInfo then
+            targetName = _G.GetSpellInfo(spellIdOrName)
+        end
+    end
+
+    if targetName and targetName ~= "" then
+        local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
+        if C_SpellBook and C_SpellBook.GetSpellBookItemName then
+            for i = 1, 150 do
+                local ok, name = pcall(C_SpellBook.GetSpellBookItemName, i, bank)
+                if ok and name and name == targetName then
+                    return true
+                end
+            end
+        end
+        if _G.GetSpellBookItemName then
+            for i = 1, 150 do
+                local ok, name = pcall(_G.GetSpellBookItemName, i, "spell")
+                if ok and name and name == targetName then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+local function GetMaxPlayerBag()
+    return (NUM_TOTAL_EQUIPPED_BAG_SLOTS and NUM_TOTAL_EQUIPPED_BAG_SLOTS > 0 and NUM_TOTAL_EQUIPPED_BAG_SLOTS)
+        or (NUM_BAG_SLOTS and NUM_BAG_SLOTS > 0 and NUM_BAG_SLOTS)
+        or 5
+end
+
 local function CountItemsInBags(itemIdList)
     local total = 0
     local highestFoundId = nil
     local highestFoundIdx = 0
-    for bag = 0, 4 do
+    local maxBag = GetMaxPlayerBag()
+    for bag = 0, maxBag do
         local numSlots = (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerNumSlots(bag)) or (_G.GetContainerNumSlots and _G.GetContainerNumSlots(bag)) or 0
         for slot = 1, numSlots do
             local id = (C_Container and C_Container.GetContainerItemID and C_Container.GetContainerItemID(bag, slot)) or (_G.GetContainerItemID and _G.GetContainerItemID(bag, slot))
@@ -122,7 +183,8 @@ local function GetSoulShardCount()
         return _G.OneLock_Shards.ShardManager:GetShardCount()
     end
     local count = 0
-    for bag = 0, 4 do
+    local maxBag = GetMaxPlayerBag()
+    for bag = 0, maxBag do
         local numSlots = (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerNumSlots(bag)) or (_G.GetContainerNumSlots and _G.GetContainerNumSlots(bag)) or 0
         for slot = 1, numSlots do
             local id = (C_Container and C_Container.GetContainerItemID and C_Container.GetContainerItemID(bag, slot)) or (_G.GetContainerItemID and _G.GetContainerItemID(bag, slot))
@@ -146,20 +208,17 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     local bg = btn:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(btn)
     bg:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-    bg:SetVertexColor(0.12, 0.08, 0.18, 0.95)
+    bg:SetVertexColor(0.10, 0.07, 0.15, 0.95)
     btn.bg = bg
 
-    -- Outer border ring (perfectly concentric circular gold/violet frame)
+    -- Outer border rim: clean, crisp, thin circular metallic ring
     local border = btn:CreateTexture(nil, "OVERLAY")
-    -- RewardRing atlas is designed to frame a 28-34px circular icon when sized at size * 1.5
-    local ringScale = 1.48
-    border:SetSize(size * ringScale, size * ringScale)
+    -- Ring sized at size + 6px (3px padding all around), so the ring is thin and does not cover the icon
+    border:SetSize(size + 6, size + 6)
     border:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    if SafeHasAtlas("UI-Character-Info-Honor-RewardRing") then
-        border:SetAtlas("UI-Character-Info-Honor-RewardRing")
-    else
-        border:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Guild-Ring")
-    end
+    border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    border:SetBlendMode("ADD")
+    border:SetVertexColor(0.85, 0.65, 1.0, 0.9)
     btn.border = border
 
     -- Main Icon (circular masked)
@@ -522,42 +581,49 @@ function Rings:UpdateStones()
     for _, btn in ipairs(satellites) do
         if btn and btn.itemIds then
             local count, highestId = CountItemsInBags(btn.itemIds)
-            local displayId = highestId or btn.itemIds[1]
-            btn.icon:SetTexture(GetItemTextureSafe(displayId))
+            local isKnown = (count > 0) or (btn.spellName and IsSpellKnownSafe(btn.spellName))
 
-            if count > 0 then
-                btn.icon:SetDesaturated(false)
-                btn.countText:SetText(tostring(count))
-                btn.countText:SetTextColor(1.0, 1.0, 1.0, 1.0)
-                btn.border:SetVertexColor(0.85, 0.60, 1.00, 1.0)
+            if not isKnown then
+                btn:Hide()
             else
-                btn.icon:SetDesaturated(true)
-                btn.countText:SetText("0")
-                btn.countText:SetTextColor(0.65, 0.65, 0.65, 0.9)
-                btn.border:SetVertexColor(0.35, 0.30, 0.45, 0.8)
-            end
+                btn:Show()
+                local displayId = highestId or btn.itemIds[1]
+                btn.icon:SetTexture(GetItemTextureSafe(displayId))
 
-            -- Item cooldown (protected against secret values in combat)
-            local start, dur, enable = GetItemCooldownSafe(displayId)
-            local hasCooldown = false
-            if start and dur and enable then
-                if not IsSecret(dur) and not IsSecret(start) and not IsSecret(enable) then
-                    if dur > 0 and (enable == 1 or enable == true) then
+                if count > 0 then
+                    btn.icon:SetDesaturated(false)
+                    btn.countText:SetText(tostring(count))
+                    btn.countText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+                    btn.border:SetVertexColor(0.85, 0.60, 1.00, 1.0)
+                else
+                    btn.icon:SetDesaturated(true)
+                    btn.countText:SetText("0")
+                    btn.countText:SetTextColor(0.65, 0.65, 0.65, 0.9)
+                    btn.border:SetVertexColor(0.35, 0.30, 0.45, 0.8)
+                end
+
+                -- Item cooldown (protected against secret values in combat)
+                local start, dur, enable = GetItemCooldownSafe(displayId)
+                local hasCooldown = false
+                if start and dur and enable then
+                    if not IsSecret(dur) and not IsSecret(start) and not IsSecret(enable) then
+                        if dur > 0 and (enable == 1 or enable == true) then
+                            hasCooldown = true
+                            if btn.cd and btn.cd.SetCooldown then
+                                btn.cd:SetCooldown(start, dur)
+                            end
+                        end
+                    else
+                        -- Under secret taint, pass start and dur directly to SetCooldown without comparisons
                         hasCooldown = true
                         if btn.cd and btn.cd.SetCooldown then
-                            btn.cd:SetCooldown(start, dur)
+                            pcall(btn.cd.SetCooldown, btn.cd, start, dur)
                         end
                     end
-                else
-                    -- Under secret taint, pass start and dur directly to SetCooldown without comparisons
-                    hasCooldown = true
-                    if btn.cd and btn.cd.SetCooldown then
-                        pcall(btn.cd.SetCooldown, btn.cd, start, dur)
-                    end
                 end
-            end
-            if not hasCooldown and btn.cd and btn.cd.Clear then
-                btn.cd:Clear()
+                if not hasCooldown and btn.cd and btn.cd.Clear then
+                    btn.cd:Clear()
+                end
             end
         end
     end
@@ -574,26 +640,32 @@ function Rings:UpdateDemons()
 
     for _, btn in ipairs(spells) do
         if btn and btn.spellId then
-            local start, dur, enable = GetSpellCooldownSafe(btn.spellId)
-            local hasCooldown = false
-            if start and dur and enable then
-                if not IsSecret(dur) and not IsSecret(start) and not IsSecret(enable) then
-                    if dur > 0 and (enable == 1 or enable == true) then
+            local isKnown = IsSpellKnownSafe(btn.spellId)
+            if not isKnown then
+                btn:Hide()
+            else
+                btn:Show()
+                local start, dur, enable = GetSpellCooldownSafe(btn.spellId)
+                local hasCooldown = false
+                if start and dur and enable then
+                    if not IsSecret(dur) and not IsSecret(start) and not IsSecret(enable) then
+                        if dur > 0 and (enable == 1 or enable == true) then
+                            hasCooldown = true
+                            if btn.cd and btn.cd.SetCooldown then
+                                btn.cd:SetCooldown(start, dur)
+                            end
+                        end
+                    else
+                        -- Under secret taint, pass start and dur directly to SetCooldown without comparisons
                         hasCooldown = true
                         if btn.cd and btn.cd.SetCooldown then
-                            btn.cd:SetCooldown(start, dur)
+                            pcall(btn.cd.SetCooldown, btn.cd, start, dur)
                         end
                     end
-                else
-                    -- Under secret taint, pass start and dur directly to SetCooldown without comparisons
-                    hasCooldown = true
-                    if btn.cd and btn.cd.SetCooldown then
-                        pcall(btn.cd.SetCooldown, btn.cd, start, dur)
-                    end
                 end
-            end
-            if not hasCooldown and btn.cd and btn.cd.Clear then
-                btn.cd:Clear()
+                if not hasCooldown and btn.cd and btn.cd.Clear then
+                    btn.cd:Clear()
+                end
             end
         end
     end
@@ -691,6 +763,8 @@ function Rings:Initialize()
     eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
     eventFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
     eventFrame:RegisterEvent("SPELL_UPDATE_USABLE")
+    eventFrame:RegisterEvent("SPELLS_CHANGED")
+    eventFrame:RegisterEvent("LEARNED_SPELL_IN_TAB")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
     eventFrame:SetScript("OnEvent", function(self, event)

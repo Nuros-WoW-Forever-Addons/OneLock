@@ -585,7 +585,7 @@ local function PopulateControls(content, isStandalone)
     table.insert(refreshables, cbAutoSort)
     curY = curY - 30
 
-    local stepSortBag = CreateStepper(content, "Target Bag Slot:", 0, 4, 1,
+    local stepSortBag = CreateStepper(content, "Target Bag Slot:", 0, 5, 1,
         function() return (_G.OneLockShardsDB and _G.OneLockShardsDB.sortTargetBag) or 4 end,
         function(v)
             if _G.OneLockShardsDB then _G.OneLockShardsDB.sortTargetBag = v end
@@ -594,10 +594,11 @@ local function PopulateControls(content, isStandalone)
         function(val)
             if val == 0 then return "Backpack (0)"
             elseif val == 4 then return "Bag 4 (Leftmost)"
+            elseif val == 5 then return "Reagent Bag (5)"
             else return "Bag " .. tostring(val) end
         end,
         nil,
-        110 -- anchorAfterLabel with 110px width
+        130 -- anchorAfterLabel with 130px width
     )
     stepSortBag:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     table.insert(refreshables, stepSortBag)

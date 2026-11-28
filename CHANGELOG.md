@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Reagent Bag (Slot 5) Support (`OneLock_Shards`, `OneLock_Rings`, `OptionsUI`)**:
+  - Added dynamic player bag detection via `NUM_TOTAL_EQUIPPED_BAG_SLOTS` supporting bag slot 5 (the modern Reagent Bag where Soul Shard bags like the Succubus quest reward are equipped).
+  - Updated `ShardManager:ScanBags()` and `GetSoulShardCount()` in `Rings.lua` to scan bags 0 through 5.
+  - Updated `ShardManager:SortShards()` and Options UI stepper to support targeting Bag 5 (`"Reagent Bag (5)"`), allowing automated sorting of Soul Shards directly into equipped soul bags located in the reagent bag slot.
+- **Dynamic Spell Learning & Known Ability Visibility (`OneLock_Rings`)**:
+  - Implemented `IsSpellKnownSafe()` with support for `C_Spell.IsSpellKnownOrOverridesKnown`, `C_Spell.IsSpellKnown`, and modern `C_SpellBook.GetSpellBookItemName`.
+  - Automatically hides unlearned stone creation and demon summoning buttons (such as Firestone, Spellstone, and Felhunter) when not yet unlocked or known by the character.
+  - Listens on `SPELLS_CHANGED` and `LEARNED_SPELL_IN_TAB` to automatically reveal buttons as new spells and ranks are learned.
+
+### Fixed
+- **Circular Border Thickness & Icon Visibility (`OneLock_Rings/Rings.lua`)**:
+  - Replaced bulky honor reward atlas with clean, thin circular action border rim (`UI-ActionButton-Border`) with additive blending and soft violet tint.
+  - Sized at `size + 6` (3px edge padding) leaving 100% of the internal icon artwork visible and unobstructed.
+
 ### Fixed
 - **Combat Secret Number Protection on Cooldowns (`OneLock_Rings/Rings.lua`)**:
   - Resolved fatal Lua error (`Interface/AddOns/OneLock_Rings/Rings.lua:537: attempt to compare local 'dur' (a secret number value, while execution tainted by 'OneLock_Rings')`).
