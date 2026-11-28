@@ -213,6 +213,20 @@ When picking up development on this addon:
 
 ## ✅ Recent Completed Work (Latest Spins)
 
+### Spin 0.1.17 (Icon Insets, Robust Spell Known Validation, High-Strata Count Overlays)
+- **Recessed Inset Icon Layout (`Rings.lua`)**:
+  - Inset icon and mask elements inside the button frame (5px padding on center 48px core, 3.5px on satellite 34px buttons) while keeping `border:SetAllPoints(btn)`.
+  - Recessed circular mask, background texture, cooldown spiral, and highlight texture to match the inset icon, ensuring the metallic border frames the artwork cleanly with zero edge bleed.
+- **Robust Unlearned & Future Spell Filtering (`Rings.lua`)**:
+  - Implemented multi-tier spell validation via `IsPlayerSpell(spellId)`, `C_Spell.IsSpellKnown`, `C_SpellBook.IsSpellKnown`, and `C_SpellBook.FindSpellBookSlotForSpell(spellId, false, false, false, false)`.
+  - Filtered spellbook item types strictly: explicitly requires active learned spell (`itemType == 1` or `Enum.SpellBookItemType.Spell`) and rejects `Enum.SpellBookItemType.FutureSpell` (value 2), preventing higher-level abilities (Summon Felhunter, Create Firestone, Create Spellstone) from appearing on low-level warlocks.
+  - Assigned numeric spell IDs to satellite stone buttons (`btnFire.spellId = 6366`, `btnHealth.spellId = 620`, `btnSoul.spellId = 693`, `btnSpell.spellId = 2362`) for direct engine validation.
+- **High-Strata Centered Numeric Count Overlays (`Rings.lua`)**:
+  - Elevated `overlayFrame` to `HIGH` frame strata and frame level `btn:GetFrameLevel() + 30`, preventing the cooldown frame from occluding count text.
+  - Configured font strings using `NumberFontNormalHuge` (center) and `NumberFontNormalLarge` (satellites) with an explicit 1px high-contrast `"OUTLINE"` and drop shadow, centered at `(0, 0)` over each button.
+- **Nemotron Architecture & Safety Review**:
+  - Verified logic with local NVIDIA Nemotron 3 Super 120B on GX10 confirming strict Lua 5.1 compliance and safe filtering for unlearned abilities.
+
 ### Spin 0.1.16 (Radial Utility HUD Wheels: Stones Ring & Demons Ring)
 - **Pure Concentric Border Ring & Notch Removal (`Textures/CircleRing.tga`)**:
   - Rebuilt `CircleRing.tga` with 360-degree rotational symmetry from the clean quadrant, completely removing the tracking-blip notch in the bottom-right.

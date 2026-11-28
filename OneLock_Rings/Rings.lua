@@ -94,76 +94,121 @@ end
 local function IsSpellKnownSafe(spellIdOrName)
     if not spellIdOrName then return false end
 
-    -- 1. Primary Native Engine Check: FindSpellBookSlotForSpell with includeFutureSpells=false, includeOffSpec=false
-    if C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell then
-        local ok, slotIndex, spellBank = pcall(C_SpellBook.FindSpellBookSlotForSpell, spellIdOrName, false, false, false, false)
-        if ok and slotIndex and slotIndex > 0 then
-            return true
-        elseif ok and slotIndex == nil then
-            -- Explicitly not in spellbook as an active/known spell
-            return false
-        end
-    end
-
-    -- 2. Fallback: C_SpellBook.IsSpellKnown (Camelot / modern engine)
+    -- A. Numeric Spell ID checks
     if type(spellIdOrName) == "number" then
-        if C_SpellBook and C_SpellBook.IsSpellKnown then
-            local ok, known = pcall(C_SpellBook.IsSpellKnown, spellIdOrName)
+        local spellId = spellIdOrName
+
+        -- 1. Native player spell check (IsPlayerSpell)
+        if _G.IsPlayerSpell then
+            local ok, known = pcall(_G.IsPlayerSpell, spellId)
             if ok and known ~= nil then return known end
         end
-        if C_SpellBook and C_SpellBook.IsSpellInSpellBook then
-            local ok, inBook = pcall(C_SpellBook.IsSpellInSpellBook, spellIdOrName)
-            if ok and inBook ~= nil then return inBook end
-        end
-    end
 
-    -- 3. Resolve Spell Name for manual spellbook slot iteration
-    local targetName = type(spellIdOrName) == "string" and spellIdOrName or nil
-    if not targetName and type(spellIdOrName) == "number" then
-        if C_Spell and C_Spell.GetSpellName then
-            targetName = C_Spell.GetSpellName(spellIdOrName)
-        elseif _G.GetSpellInfo then
-            targetName = _G.GetSpellInfo(spellIdOrName)
+        -- 2. C_Spell.IsSpellKnown (Camelot / modern engine)
+        if C_Spell and C_Spell.IsSpellKnown then
+            local ok, known = pcall(C_Spell.IsSpellKnown, spellId)
+            if ok and known ~= nil then return known end
         end
-    end
 
-    -- 4. Manual Spellbook Scan (filtering out off-spec / future / unlearned spells)
-    if targetName and targetName ~= "" then
-        local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
-        if C_SpellBook and C_SpellBook.GetSpellBookItemName then
-            for i = 1, 150 do
-                local ok, name = pcall(C_SpellBook.GetSpellBookItemName, i, bank)
-                if ok and name and name == targetName then
-                    -- Verify item type
-                    if C_SpellBook.GetSpellBookItemType then
-                        local okType, itemType = pcall(C_SpellBook.GetSpellBookItemType, i, bank)
-                        if okType and itemType then
-                            if itemType == 1 or itemType == "SPELL" then
-                                return true
-                            elseif itemType == "FUTURESPELL" or itemType == "FLYOUT" then
-                                return false
-                            end
-                        end
-                    end
-                    if C_SpellBook.IsSpellBookItemOffSpec then
-                        local okOff, isOff = pcall(C_SpellBook.IsSpellBookItemOffSpec, i, bank)
-                        if okOff and isOff then return false end
-                    end
+        -- 3. C_SpellBook.IsSpellKnown
+        if C_SpellBook and C_SpellBook.IsSpellKnown then
+            local ok, known = pcall(C_SpellBook.IsSpellKnown, spellId)
+            if ok and known ~= nil then return known end
+        end
+
+        -- 4. C_SpellBook.FindSpellBookSlotForSpell (exclude future spells & offspec)
+        if C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell then
+            local ok, slotIndex = pcall(C_SpellBook.FindSpellBookSlotForSpell, spellId, false, false, false, false)
+            if ok then
+                if slotIndex and slotIndex > 0 then
                     return true
+                elseif slotIndex == nil then
+                    return false
                 end
             end
         end
-        if _G.GetSpellBookItemName then
-            for i = 1, 150 do
-                local ok, name = pcall(_G.GetSpellBookItemName, i, "spell")
-                if ok and name and name == targetName then
-                    if _G.GetSpellBookItemInfo then
-                        local okInfo, itemType = pcall(_G.GetSpellBookItemInfo, i, "spell")
-                        if okInfo and (itemType == "FUTURESPELL" or itemType == "FLYOUT") then
-                            return false
-                        end
+
+        -- 5. Legacy global IsSpellKnown
+        if _G.IsSpellKnown then
+            local ok, known = pcall(_G.IsSpellKnown, spellId)
+            if ok and known ~= nil then return known end
+        end
+    end
+
+    -- B. Name-based resolution and spellbook scan
+    local targetName = nil
+    if type(spellIdOrName) == "string" then
+        targetName = spellIdOrName
+    elseif type(spellIdOrName) == "number" then
+        if C_Spell and C_Spell.GetSpellName then
+            local ok, name = pcall(C_Spell.GetSpellName, spellIdOrName)
+            if ok and name then targetName = name end
+        end
+        if not targetName and _G.GetSpellInfo then
+            local ok, name = pcall(_G.GetSpellInfo, spellIdOrName)
+            if ok and name then targetName = name end
+        end
+    end
+
+    if not targetName or targetName == "" then
+        return false
+    end
+
+    -- Check FindSpellBookSlotForSpell by target name
+    if C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell then
+        local ok, slotIndex = pcall(C_SpellBook.FindSpellBookSlotForSpell, targetName, false, false, false, false)
+        if ok then
+            if slotIndex and slotIndex > 0 then
+                return true
+            elseif slotIndex == nil then
+                return false
+            end
+        end
+    end
+
+    -- Strict manual Spellbook scan (guaranteeing FutureSpell / unlearned spells are rejected)
+    local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
+    if C_SpellBook then
+        for i = 1, 200 do
+            local name = nil
+            local itemType = nil
+            local isOffSpec = false
+
+            if C_SpellBook.GetSpellBookItemInfo then
+                local ok, info = pcall(C_SpellBook.GetSpellBookItemInfo, i, bank)
+                if ok and info then
+                    name = info.name
+                    itemType = info.itemType
+                    isOffSpec = info.isOffSpec
+                end
+            end
+
+            if not name and C_SpellBook.GetSpellBookItemName then
+                local okN, n = pcall(C_SpellBook.GetSpellBookItemName, i, bank)
+                if okN then name = n end
+                if C_SpellBook.GetSpellBookItemType then
+                    local okT, t = pcall(C_SpellBook.GetSpellBookItemType, i, bank)
+                    if okT then itemType = t end
+                end
+                if C_SpellBook.IsSpellBookItemOffSpec then
+                    local okO, o = pcall(C_SpellBook.IsSpellBookItemOffSpec, i, bank)
+                    if okO then isOffSpec = o end
+                end
+            end
+
+            if name and name == targetName then
+                if isOffSpec then
+                    return false
+                end
+                -- Strictly verify itemType:
+                -- 1 / "SPELL" / Enum.SpellBookItemType.Spell is learned
+                -- 2 / "FUTURESPELL" / Enum.SpellBookItemType.FutureSpell is unlearned!
+                if itemType ~= nil then
+                    if itemType == 1 or itemType == "SPELL" or (Enum and Enum.SpellBookItemType and itemType == Enum.SpellBookItemType.Spell) then
+                        return true
+                    else
+                        return false
                     end
-                    return true
                 end
             end
         end
@@ -234,17 +279,22 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     btn:SetSize(size, size)
     btn:RegisterForClicks("AnyUp", "AnyDown")
 
+    -- Inset icon and contents slightly inside the outer circular metallic ring
+    -- Center: 48px button with 5px inset -> 38px icon
+    -- Satellite: 34px button with 3.5px inset -> 27px icon
+    local inset = isCenter and 5 or 3.5
+
     -- Circular mask object for all button textures
     local mask = btn.CreateMaskTexture and btn:CreateMaskTexture()
     if type(mask) == "table" then
         mask:SetTexture(MASK_TEXTURE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        mask:SetAllPoints(btn)
         btn.mask = mask
     end
 
     -- Circular background backing
     local bg = btn:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(btn)
+    bg:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
+    bg:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
     bg:SetTexture(MASK_TEXTURE)
     bg:SetVertexColor(0.08, 0.05, 0.12, 0.95)
     if mask and bg.AddMaskTexture then
@@ -252,27 +302,34 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     end
     btn.bg = bg
 
-    -- Main Icon
+    -- Main Icon (recessed inside the outer border ring)
     local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints(btn)
+    icon:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
+    icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    if mask and icon.AddMaskTexture then
-        icon:AddMaskTexture(mask)
-    elseif icon.SetMask then
-        icon:SetMask(MASK_TEXTURE)
+    if mask then
+        mask:SetAllPoints(icon)
+        if icon.AddMaskTexture then
+            icon:AddMaskTexture(mask)
+        elseif icon.SetMask then
+            icon:SetMask(MASK_TEXTURE)
+        end
     end
     btn.icon = icon
 
-    -- Cooldown spiral (circular masked)
+    -- Cooldown spiral (recessed to match icon)
     local cd = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
-    cd:SetAllPoints(btn)
+    cd:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
+    cd:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
+    cd:SetFrameLevel(btn:GetFrameLevel() + 2)
     cd:SetDrawEdge(true)
     cd:SetSwipeColor(0, 0, 0, 0.75)
     btn.cd = cd
 
     -- Highlight texture on mouseover
     local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints(btn)
+    highlight:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
+    highlight:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
     highlight:SetTexture("Interface\\Buttons\\ButtonHilight-Round")
     highlight:SetBlendMode("ADD")
     btn.highlight = highlight
@@ -284,14 +341,20 @@ local function CreateCircularSecureButton(parent, name, size, isCenter)
     border:SetVertexColor(0.85, 0.65, 1.0, 0.9)
     btn.border = border
 
-    -- Count Overlay Frame to guarantee fontstring is above cooldown spiral
+    -- Count Overlay Frame to guarantee fontstring is in HIGH strata above all button elements
     local overlayFrame = CreateFrame("Frame", nil, btn)
     overlayFrame:SetAllPoints(btn)
-    overlayFrame:SetFrameLevel(btn:GetFrameLevel() + 10)
+    overlayFrame:SetFrameStrata("HIGH")
+    overlayFrame:SetFrameLevel(btn:GetFrameLevel() + 30)
     btn.overlayFrame = overlayFrame
 
     -- Count FontString (Centered on each button with high contrast outline & shadow)
-    local count = overlayFrame:CreateFontString(nil, "OVERLAY", isCenter and "GameFontNormalHuge" or "GameFontNormalLarge")
+    local count = overlayFrame:CreateFontString(nil, "OVERLAY")
+    count:SetFontObject(isCenter and "NumberFontNormalHuge" or "NumberFontNormalLarge")
+    local fontFile, fontHeight = count:GetFont()
+    if fontFile then
+        count:SetFont(fontFile, isCenter and 18 or 13, "OUTLINE")
+    end
     count:SetPoint("CENTER", overlayFrame, "CENTER", 0, 0)
     count:SetShadowOffset(1, -1)
     count:SetShadowColor(0, 0, 0, 1)
@@ -387,6 +450,7 @@ local function CreateStonesRing()
     btnFire:SetAttribute("type2", "macro")
     btnFire:SetAttribute("macrotext2", "/cast Create Firestone")
     btnFire.itemIds = FIRESTONES
+    btnFire.spellId = 6366
     btnFire.spellName = "Create Firestone"
     btnFire:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -407,6 +471,7 @@ local function CreateStonesRing()
     btnHealth:SetAttribute("type2", "macro")
     btnHealth:SetAttribute("macrotext2", "/cast Create Healthstone")
     btnHealth.itemIds = HEALTHSTONES
+    btnHealth.spellId = 620
     btnHealth.spellName = "Create Healthstone"
     btnHealth:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -427,6 +492,7 @@ local function CreateStonesRing()
     btnSoul:SetAttribute("type2", "macro")
     btnSoul:SetAttribute("macrotext2", "/cast Create Soulstone")
     btnSoul.itemIds = SOULSTONES
+    btnSoul.spellId = 693
     btnSoul.spellName = "Create Soulstone"
     btnSoul:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -447,6 +513,7 @@ local function CreateStonesRing()
     btnSpell:SetAttribute("type2", "macro")
     btnSpell:SetAttribute("macrotext2", "/cast Create Spellstone")
     btnSpell.itemIds = SPELLSTONES
+    btnSpell.spellId = 2362
     btnSpell.spellName = "Create Spellstone"
     btnSpell:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -625,7 +692,9 @@ function Rings:UpdateStones()
     for _, btn in ipairs(satellites) do
         if btn and btn.itemIds then
             local count, highestId = CountItemsInBags(btn.itemIds)
-            local isKnown = (count > 0) or (btn.spellName and IsSpellKnownSafe(btn.spellName))
+            local isKnown = (count > 0)
+                or (btn.spellId and IsSpellKnownSafe(btn.spellId))
+                or (btn.spellName and IsSpellKnownSafe(btn.spellName))
 
             if not isKnown then
                 btn:Hide()
@@ -751,23 +820,31 @@ function Rings:ApplySettings()
         [3]  = {  R, 0 }
     }
 
-    if stoneButtons then
-        for hour, btn in pairs(stoneButtons) do
-            local pt = coords[hour]
-            if pt then
-                btn:ClearAllPoints()
-                btn:SetPoint("CENTER", stonesAnchor, "CENTER", pt[1], pt[2])
-            end
+    local hourToStone = {
+        [9]  = stonesButtons.fire,
+        [11] = stonesButtons.health,
+        [1]  = stonesButtons.soul,
+        [3]  = stonesButtons.spell,
+    }
+    for hour, btn in pairs(hourToStone) do
+        local pt = coords[hour]
+        if btn and pt and stonesAnchor then
+            btn:ClearAllPoints()
+            btn:SetPoint("CENTER", stonesAnchor, "CENTER", pt[1], pt[2])
         end
     end
 
-    if demonButtons then
-        for hour, btn in pairs(demonButtons) do
-            local pt = coords[hour]
-            if pt then
-                btn:ClearAllPoints()
-                btn:SetPoint("CENTER", demonsAnchor, "CENTER", pt[1], pt[2])
-            end
+    local hourToDemon = {
+        [9]  = demonsButtons.imp,
+        [11] = demonsButtons.vw,
+        [1]  = demonsButtons.succ,
+        [3]  = demonsButtons.fel,
+    }
+    for hour, btn in pairs(hourToDemon) do
+        local pt = coords[hour]
+        if btn and pt and demonsAnchor then
+            btn:ClearAllPoints()
+            btn:SetPoint("CENTER", demonsAnchor, "CENTER", pt[1], pt[2])
         end
     end
 end

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Recessed Inset Icon Layout (`OneLock_Rings/Rings.lua`)**:
+  - Inset icon and mask elements inside the button frame (5px padding on center 48px core, 3.5px on satellite 34px buttons) while keeping `border:SetAllPoints(btn)`.
+  - Recessed circular mask, background texture, cooldown spiral, and highlight texture to match the inset icon, ensuring the metallic border frames the artwork cleanly with zero edge bleed.
+- **Robust Unlearned & Future Spell Filtering (`OneLock_Rings/Rings.lua`)**:
+  - Implemented multi-tier spell validation via `IsPlayerSpell(spellId)`, `C_Spell.IsSpellKnown`, `C_SpellBook.IsSpellKnown`, and `C_SpellBook.FindSpellBookSlotForSpell(spellId, false, false, false, false)`.
+  - Filtered spellbook item types strictly: explicitly requires active learned spell (`itemType == 1` or `Enum.SpellBookItemType.Spell`) and rejects `Enum.SpellBookItemType.FutureSpell` (value 2), preventing higher-level abilities (Summon Felhunter, Create Firestone, Create Spellstone) from appearing on low-level warlocks.
+  - Assigned numeric spell IDs to satellite stone buttons (`btnFire.spellId = 6366`, `btnHealth.spellId = 620`, `btnSoul.spellId = 693`, `btnSpell.spellId = 2362`) for direct engine validation.
+- **High-Strata Centered Numeric Count Overlays (`OneLock_Rings/Rings.lua`)**:
+  - Elevated `overlayFrame` to `HIGH` frame strata and frame level `btn:GetFrameLevel() + 30`, preventing the cooldown frame from occluding count text.
+  - Configured font strings using `NumberFontNormalHuge` (center) and `NumberFontNormalLarge` (satellites) with an explicit 1px high-contrast `"OUTLINE"` and drop shadow, centered at `(0, 0)` over each button.
+- **Nemotron Architecture & Safety Review**:
+  - Verified logic with local NVIDIA Nemotron 3 Super 120B on GX10 confirming strict Lua 5.1 compliance and safe filtering for unlearned abilities.
+
+### Fixed
 - **Notch Removal & Pure Concentric Ring (`OneLock_Rings/Textures/CircleRing.tga`)**:
   - Eliminated the small tracking-blip circle artifact in the bottom-right quadrant of `CircleRing.tga` by rebuilding the texture with 360-degree rotational symmetry from the clean quadrant.
 - **Centered Shard & Stone Counts with Elevated Overlays (`OneLock_Rings/Rings.lua`)**:
