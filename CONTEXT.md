@@ -36,16 +36,21 @@ OneLock/
 │   ├── OneLock_Timers.toc
 │   ├── Core.lua
 │   ├── Tracker.lua
-│   └── Display.lua
+│   ├── Display.lua
+│   └── OptionsUI.lua
 ├── OneLock_Shards/
 │   ├── OneLock_Shards.toc
 │   ├── Core.lua
 │   ├── ShardManager.lua
 │   └── SoulstoneTracker.lua
-└── OneLock_Procs/
-    ├── OneLock_Procs.toc
+├── OneLock_Procs/
+│   ├── OneLock_Procs.toc
+│   ├── Core.lua
+│   └── Alerts.lua
+└── OneLock_Rings/
+    ├── OneLock_Rings.toc
     ├── Core.lua
-    └── Alerts.lua
+    └── Rings.lua
 ```
 
 ### Module Breakdown
@@ -63,6 +68,10 @@ OneLock/
   - `OneLock_Procs.toc`: Manifest, SavedVariables `OneLockProcsDB`, optional dependency on `OneSwatter`.
   - `Core.lua`: Namespace initialization (`OneLock_Procs`), DB setup, slash command handler (`/olprocs`).
   - `Alerts.lua`: Event hooks for `UNIT_AURA` (`player`) detecting Shadow Trance (Nightfall) and Backlash procs via `C_UnitAuras.GetPlayerAuraBySpellID`, plus `UI_ERROR_MESSAGE` parsing for Fear and Banish target immunities.
+- **`OneLock_Rings`**:
+  - `OneLock_Rings.toc`: Manifest, SavedVariables `OneLockRingsDB`, optional dependency on `OneSwatter`.
+  - `Core.lua`: Namespace initialization (`OneLock_Rings`), SavedVariables schema defaults, slash commands (`/olrings`), OneAddon chat routing.
+  - `Rings.lua`: Circular clock-point radial wheels for Stones (with live Soul Shard inventory count, threshold warnings, and 1-click purge button) and Demon Summoning (with center Ritual of Summoning), circular masks (`TempPortraitAlphaMask`), item/spell cooldown spinners, and edit mode dragging.
 
 ---
 
@@ -158,6 +167,31 @@ OneLockProcsDB = {
 }
 ```
 
+### `OneLockRingsDB`
+```lua
+OneLockRingsDB = {
+    version = 1,
+    locked = false,                    -- Anchor movement lock (edit mode visible by default on initial setup)
+    showStonesRing = true,             -- Show Warlock Stones radial ring
+    showDemonsRing = true,             -- Show Demon Summoning radial ring
+    stonesScale = 1.0,                 -- Scale (0.6x to 2.0x)
+    demonsScale = 1.0,                 -- Scale (0.6x to 2.0x)
+    radius = 50,                       -- Radius from center to satellite buttons (px)
+    stonesPosition = {
+        point = "CENTER",
+        relativePoint = "CENTER",
+        x = -130,
+        y = -100,
+    },
+    demonsPosition = {
+        point = "CENTER",
+        relativePoint = "CENTER",
+        x = 130,
+        y = -100,
+    },
+}
+```
+
 ---
 
 ## 🔌 Diagnostics Integration
@@ -178,6 +212,31 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.1.16 (Radial Utility HUD Wheels: Stones Ring & Demons Ring)
+- **Radial Stones Ring (`OneLock_Rings/Rings.lua`)**:
+  - Center button: Displays live Soul Shard inventory count with color warnings (white = within limit, amber/red = cap exceeded). Clicking the center button out of combat purges 1 excess shard using `ShardManager:PurgeOneExcessShard()`.
+  - 4 satellite action buttons at clock points (radius $R = 50$):
+    - 9 o'clock ($180^\circ$): Firestone (Left-click Use/Apply, Right-click Create).
+    - 11 o'clock ($120^\circ$): Healthstone (Left-click Use highest rank in bag, Right-click Create highest rank known).
+    - 1 o'clock ($60^\circ$): Soulstone (Left-click Use/Store on target/mouseover/self, Right-click Create).
+    - 3 o'clock ($0^\circ$): Spellstone (Left-click Use/Apply, Right-click Create).
+  - Accurate item artwork, subdued desaturated state when item count is 0 with explicit `"0"` counter, and illuminated artwork with bag count when available.
+  - Native item cooldown spinners.
+- **Radial Demon Summoning Ring (`OneLock_Rings/Rings.lua`)**:
+  - Center button: Ritual of Summoning spell button.
+  - 4 demon summon satellite buttons:
+    - 9 o'clock: Summon Imp.
+    - 11 o'clock: Summon Voidwalker.
+    - 1 o'clock: Summon Succubus.
+    - 3 o'clock: Summon Felhunter.
+  - Native spell cooldown frames and circular alpha masks (`TempPortraitAlphaMask`).
+- **Interactive Edit Mode & Option Controls (`OptionsUI.lua`)**:
+  - Movable anchors (`OneLock_StonesRingAnchor`, `OneLock_DemonsRingAnchor`) with purple backdrop frames when unlocked (`/olrings move`).
+  - Section 4 integrated into Options UI with toggles for both rings, scale steppers (0.6x - 2.0x), and radius stepper (35 - 80 px).
+- **Packaging Workflow & Live Sync**:
+  - Added `OneLock_Rings` to `.github/workflows/package.yml`.
+  - Synced to live client via `./sync-live.sh OneLock`.
 
 ### Spin 0.1.15 (Foreign Warlock DoT Isolation & Non-Warlock Character Deactivation)
 - **Foreign Warlock DoT Isolation (`Tracker.lua`)**:

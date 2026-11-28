@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Radial Utility HUD Wheels (`OneLock_Rings`)**:
+  - Implemented circular radial HUD modules with clock point positioning:
+    - **Stones Radial Ring**:
+      - Center: Live Soul Shard inventory counter with colored threshold warnings (white = within limit, amber/red = cap exceeded). Clicking the center button purges 1 excess shard out of combat via `ShardManager:PurgeOneExcessShard()`.
+      - 9 o'clock: Firestone (Left-click Use/Apply, Right-click Create).
+      - 11 o'clock: Healthstone (Left-click Use highest rank in bag, Right-click Create highest rank known).
+      - 1 o'clock: Soulstone (Left-click Use/Store, Right-click Create).
+      - 3 o'clock: Spellstone (Left-click Use/Apply, Right-click Create).
+      - Satellite buttons show subdued desaturated icons with count `0` when empty, and illuminated icons with accurate bag counts when available.
+      - Integrated item and spell cooldown spinners.
+    - **Demons Radial Ring**:
+      - Center: Ritual of Summoning spell button.
+      - 9 o'clock: Summon Imp.
+      - 11 o'clock: Summon Voidwalker.
+      - 1 o'clock: Summon Succubus.
+      - 3 o'clock: Summon Felhunter.
+      - Circular masks (`TempPortraitAlphaMask`) and active spell cooldown frames.
+  - Interactive Edit Mode: Movable anchor frames with purple backdrop boxes (`/olrings move` / `/olrings lock`).
+  - Options UI Section 4: Integrated toggles, scale steppers (0.6x - 2.0x), and radius stepper (35 - 80 px) into `OneLock_Timers/OptionsUI.lua`.
+  - Slash commands: `/olrings` (`move`, `reset`, `stones`, `demons`).
+
+
 ## [0.1.13] - 2026-11-24
 
 ### Fixed

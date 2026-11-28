@@ -13,6 +13,7 @@ The suite is broken into three lightweight, independently loadable modules:
 | **`OneLock_Timers`** | Multi-target raid DoT and crowd-control tracking engine with Pandemic refresh color shifts (< 3.0s) and target grouping. | **Active / Ready** |
 | **`OneLock_Shards`** | Automated Soul Shard inventory management, excess shard cleanup, and persistent 30-minute Soulstone tracking. | **Active / Ready** |
 | **`OneLock_Procs`** | High-visibility proc alerts for Shadow Trance (Nightfall) and Backlash, plus target CC immunity detection (Fear/Banish). | **Active / Ready** |
+| **`OneLock_Rings`** | Radial circular utility wheels for stones (with live shard counter & purge) and demon summoning at clock points. | **Active / Ready** |
 
 ---
 
@@ -83,6 +84,14 @@ OneLock includes a full graphical configuration panel available in two modes:
 - `/olprocs nightfall` — Toggle Shadow Trance alerts.
 - `/olprocs backlash` — Toggle Backlash alerts.
 - `/olprocs immunity` — Toggle target CC immunity alerts.
+
+### `OneLock_Rings` (`/olrings`)
+- `/olrings` — Display radial rings status and command help.
+- `/olrings move` — Toggle edit mode to reposition Stones Ring and Demons Ring anchors.
+- `/olrings lock` — Lock rings in place and hide edit mode frames.
+- `/olrings reset` — Reset ring positions to defaults.
+- `/olrings stones` — Toggle display of the Stones radial ring.
+- `/olrings demons` — Toggle display of the Demon Summoning radial ring.
 
 ---
 

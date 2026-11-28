@@ -767,6 +767,117 @@ local function PopulateControls(content, isStandalone)
     btnTestProc:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
     curY = curY - 40
 
+    -- =========================================================================
+    -- Section 4: Radial Utility HUD (Rings)
+    -- =========================================================================
+    local headerRings = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    headerRings:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    headerRings:SetText("|cff9966ffOneLock: Rings (Radial Utility HUD)|r")
+    curY = curY - 22
+
+    local subRings = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    subRings:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    subRings:SetText("Radial action wheels for stones with shard counter and demon summoning.")
+    curY = curY - 26
+
+    -- Buttons: Move / Lock Rings, Reset Positions
+    local btnMoveRings = CreateButton(content, "Move Rings (Edit Mode)", 160, 24, function(self)
+        if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ToggleLock then
+            local locked = _G.OneLock_Rings.Rings:ToggleLock()
+            self:SetText(locked and "Move Rings (Edit Mode)" or "Lock Rings")
+        end
+    end)
+    btnMoveRings:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+
+    btnMoveRings.Refresh = function(self)
+        local isUnlocked = (_G.OneLockRingsDB and _G.OneLockRingsDB.locked == false)
+        self:SetText(isUnlocked and "Lock Rings" or "Move Rings (Edit Mode)")
+    end
+    table.insert(refreshables, btnMoveRings)
+
+    local btnResetRings = CreateButton(content, "Reset Ring Positions", 150, 24, function()
+        if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ResetPositions then
+            _G.OneLock_Rings.Rings:ResetPositions()
+        end
+    end)
+    btnResetRings:SetPoint("LEFT", btnMoveRings, "RIGHT", 10, 0)
+    curY = curY - 34
+
+    -- Checkboxes: Enable Stones Ring & Demons Ring
+    local cbStonesRing = CreateCheckbox(content, "Enable Stones Radial Ring (Center Shard Counter)",
+        function() return _G.OneLockRingsDB and _G.OneLockRingsDB.showStonesRing end,
+        function(v)
+            if _G.OneLockRingsDB then _G.OneLockRingsDB.showStonesRing = v end
+            if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ApplySettings then
+                _G.OneLock_Rings.Rings:ApplySettings()
+            end
+        end,
+        nil
+    )
+    cbStonesRing:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbStonesRing)
+    curY = curY - 26
+
+    local cbDemonsRing = CreateCheckbox(content, "Enable Demon Summoning Radial Ring",
+        function() return _G.OneLockRingsDB and _G.OneLockRingsDB.showDemonsRing end,
+        function(v)
+            if _G.OneLockRingsDB then _G.OneLockRingsDB.showDemonsRing = v end
+            if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ApplySettings then
+                _G.OneLock_Rings.Rings:ApplySettings()
+            end
+        end,
+        nil
+    )
+    cbDemonsRing:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, cbDemonsRing)
+    curY = curY - 30
+
+    -- Steppers: Stones Ring Scale, Demons Ring Scale, Ring Radius
+    local stepStonesScale = CreateStepper(content, "Stones Ring Scale:", 0.6, 2.0, 0.05,
+        function() return (_G.OneLockRingsDB and _G.OneLockRingsDB.stonesScale) or 1.0 end,
+        function(v)
+            if _G.OneLockRingsDB then _G.OneLockRingsDB.stonesScale = v end
+            if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ApplySettings then
+                _G.OneLock_Rings.Rings:ApplySettings()
+            end
+        end,
+        "%.2fx",
+        nil
+    )
+    stepStonesScale:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepStonesScale)
+    curY = curY - 30
+
+    local stepDemonsScale = CreateStepper(content, "Demons Ring Scale:", 0.6, 2.0, 0.05,
+        function() return (_G.OneLockRingsDB and _G.OneLockRingsDB.demonsScale) or 1.0 end,
+        function(v)
+            if _G.OneLockRingsDB then _G.OneLockRingsDB.demonsScale = v end
+            if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ApplySettings then
+                _G.OneLock_Rings.Rings:ApplySettings()
+            end
+        end,
+        "%.2fx",
+        nil
+    )
+    stepDemonsScale:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepDemonsScale)
+    curY = curY - 30
+
+    local stepRadius = CreateStepper(content, "Ring Button Distance:", 35, 80, 2,
+        function() return (_G.OneLockRingsDB and _G.OneLockRingsDB.radius) or 50 end,
+        function(v)
+            if _G.OneLockRingsDB then _G.OneLockRingsDB.radius = v end
+            if _G.OneLock_Rings and _G.OneLock_Rings.Rings and _G.OneLock_Rings.Rings.ApplySettings then
+                _G.OneLock_Rings.Rings:ApplySettings()
+            end
+        end,
+        "%d px",
+        nil
+    )
+    stepRadius:SetPoint("TOPLEFT", content, "TOPLEFT", 6, curY)
+    table.insert(refreshables, stepRadius)
+    curY = curY - 40
+
     content:SetHeight(math.abs(curY) + 30)
 
     content.RefreshAll = function()

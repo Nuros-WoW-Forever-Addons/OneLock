@@ -1,0 +1,11 @@
+## Interface: 16001
+## Title: |cff9966ffOneLock|r: Rings
+## Notes: Circular radial utility HUD for Warlock Stones and Demon Summons.
+## Author: Nuros
+## Version: 0.1.13
+## SavedVariablesPerCharacter: OneLockRingsDB
+## OptionalDeps: OneLock_Shards, OneSwatter
+## IconTexture: 136184
+
+Core.lua
+Rings.lua

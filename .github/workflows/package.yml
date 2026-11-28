@@ -25,6 +25,7 @@ jobs:
           cp -r OneLock_Timers staging/
           cp -r OneLock_Shards staging/
           cp -r OneLock_Procs staging/
+          cp -r OneLock_Rings staging/
           cp README.md CHANGELOG.md CONTEXT.md staging/OneLock_Timers/ || true
           cd staging
           zip -r "../${ZIP_NAME}" .
